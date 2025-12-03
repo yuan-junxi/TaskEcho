@@ -107,6 +107,7 @@
             font-size: 16px;
             resize: vertical;
             transition: border-color 0.2s;
+            font-family: inherit;
         }
 
         textarea:focus {
@@ -119,9 +120,26 @@
             color: #a0a0a0;
         }
 
+        #markdownOutput {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: #f8f9fa;
+        }
+
+        #markdownOutput:not([readonly]) {
+            background-color: #ffffff;
+        }
+
         .button-group {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .button-group-left, .button-group-right {
+            display: flex;
             gap: 15px;
         }
 
@@ -137,6 +155,23 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            white-space: nowrap;
+        }
+
+        #convertBtn {
+            background-color: #0366d6;
+            color: white;
+        }
+
+        #convertBtn:hover:not(:disabled) {
+            background-color: #0256c7;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(3, 102, 214, 0.3);
+        }
+
+        #convertBtn:disabled {
+            background-color: #79b8ff;
+            cursor: not-allowed;
         }
 
         #submitBtn {
@@ -241,17 +276,50 @@
             to { transform: rotate(360deg); }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .container {
                 padding: 20px;
+                margin-top: 10px;
             }
 
             .button-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .button-group-left, .button-group-right {
+                width: 100%;
                 flex-direction: column;
             }
 
             button {
                 width: 100%;
+                padding: 12px 20px;
+            }
+
+            textarea {
+                min-height: 150px;
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .subtitle {
+                font-size: 1rem;
             }
         }
     </style>
@@ -300,13 +368,35 @@
             </div>
         </div>
 
+        <!-- 在现有的表单中，在 Issue标题 输入框之后添加 -->
+
+        <div class="form-group">
+            <label for="markdownOutput">AI生成的Markdown <span class="required">*</span></label>
+            <textarea
+                    id="markdownOutput"
+                    placeholder="点击"转换为Markdown"按钮后，AI生成的内容将显示在这里。您可以编辑此内容。"
+            readonly
+            ></textarea>
+            <div class="char-count">
+                <span id="markdownCharCount">0</span> 字符
+            </div>
+        </div>
+
+        <!-- 替换现有的按钮组 -->
         <div class="button-group">
-            <button type="button" id="clearBtn">
-                <i class="fas fa-eraser"></i> 清空内容
-            </button>
-            <button type="submit" id="submitBtn">
-                <i class="fas fa-paper-plane"></i> 提交Issue
-            </button>
+            <div class="button-group-left">
+                <button type="button" id="clearBtn">
+                    <i class="fas fa-eraser"></i> 清空内容
+                </button>
+                <button type="button" id="convertBtn">
+                    <i class="fas fa-robot"></i> 转换为Markdown
+                </button>
+            </div>
+            <div class="button-group-right">
+                <button type="submit" id="submitBtn">
+                    <i class="fas fa-paper-plane"></i> 提交Issue
+                </button>
+            </div>
         </div>
     </form>
 
@@ -320,48 +410,86 @@
     <p>© 2023 GitHub Issue提交工具 | 此工具使用GitHub REST API | 仅限本地测试</p>
 </footer>
 
+
 <script>
     // 获取DOM元素
     const issueForm = document.getElementById('issueForm');
     const issueContent = document.getElementById('issueContent');
     const issueTitle = document.getElementById('issueTitle');
+    const markdownOutput = document.getElementById('markdownOutput');
     const submitBtn = document.getElementById('submitBtn');
+    const convertBtn = document.getElementById('convertBtn');
     const clearBtn = document.getElementById('clearBtn');
     const statusMessage = document.getElementById('statusMessage');
     const statusText = document.getElementById('statusText');
     const charCount = document.getElementById('charCount');
     const titleCharCount = document.getElementById('titleCharCount');
+    const markdownCharCount = document.getElementById('markdownCharCount');
 
-    // 配置变量 - 将从配置文件加载
-    let GITHUB_TOKEN = '';
-    let CONFIG_LOADED = false;
-    const DEFAULT_CONFIG = {
-        REPO_OWNER: 'yuan-junxi',
-        REPO_NAME: 'TaskEcho',
-        API_URL: 'https://api.github.com'
+    // 配置变量
+    let AI_CONFIG = {
+        BASE_URL: '',
+        API_KEY: '',
+        MODEL: '',
+        PROMPT_FILE: 'prompt.txt',
+        PROMPT_CONTENT: '',
+        IS_CONFIGURED: false
     };
 
-    // 字符计数更新
-    issueContent.addEventListener('input', () => {
-        charCount.textContent = issueContent.value.length;
-    });
+    let GITHUB_CONFIG = {
+        TOKEN: '',
+        REPO_OWNER: 'yuan-junxi',
+        REPO_NAME: 'TaskEcho',
+        API_URL: 'https://api.github.com',
+        IS_CONFIGURED: false
+    };
 
-    issueTitle.addEventListener('input', () => {
-        titleCharCount.textContent = issueTitle.value.length;
-    });
+    // 初始化DOM事件
+    function initUIEvents() {
+        // 字符计数更新
+        issueContent.addEventListener('input', () => {
+            charCount.textContent = issueContent.value.length;
+        });
+
+        issueTitle.addEventListener('input', () => {
+            titleCharCount.textContent = issueTitle.value.length;
+        });
+
+        markdownOutput.addEventListener('input', () => {
+            markdownCharCount.textContent = markdownOutput.value.length;
+        });
+
+        // 清空表单
+        clearBtn.addEventListener('click', () => {
+            issueContent.value = '';
+            issueTitle.value = '';
+            markdownOutput.value = '';
+            charCount.textContent = '0';
+            titleCharCount.textContent = '0';
+            markdownCharCount.textContent = '0';
+            markdownOutput.readOnly = true;
+            markdownOutput.style.backgroundColor = '#f8f9fa';
+            hideStatusMessage();
+        });
+
+        // 转换按钮点击事件
+        convertBtn.addEventListener('click', async () => {
+            await convertToMarkdown();
+        });
+
+        // 提交按钮点击事件
+        issueForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await submitIssue();
+        });
+    }
 
     // 初始化字符计数
-    charCount.textContent = issueContent.value.length;
-    titleCharCount.textContent = issueTitle.value.length;
-
-    // 清空表单
-    clearBtn.addEventListener('click', () => {
-        issueContent.value = '';
-        issueTitle.value = '';
-        charCount.textContent = '0';
-        titleCharCount.textContent = '0';
-        hideStatusMessage();
-    });
+    function initCharCounts() {
+        charCount.textContent = issueContent.value.length;
+        titleCharCount.textContent = issueTitle.value.length;
+        markdownCharCount.textContent = markdownOutput.value.length;
+    }
 
     // 显示状态消息
     function showStatusMessage(message, type) {
@@ -375,118 +503,421 @@
         statusMessage.style.display = 'none';
     }
 
-    // 加载配置文件
-    async function loadConfig() {
-        try {
-            const response = await fetch('config.conf');
-            if (!response.ok) {
-                throw new Error(`配置文件加载失败: ${response.status}`);
-            }
+    // 更新按钮状态
+    function updateButtonState(converting = false, submitting = false) {
+        convertBtn.disabled = converting || submitting;
+        submitBtn.disabled = submitting || converting;
 
-            const configText = await response.text();
-            const configLines = configText.split('\n');
+        if (converting) {
+            convertBtn.innerHTML = '<div class="loading"></div> 转换中...';
+        } else {
+            convertBtn.innerHTML = '<i class="fas fa-robot"></i> 转换为Markdown';
+        }
 
-            configLines.forEach(line => {
-                if (line.trim() && !line.startsWith('#')) {
-                    const [key, value] = line.split('=').map(s => s.trim());
-                    if (key && value) {
-                        switch(key) {
-                            case 'GITHUB_TOKEN':
-                                GITHUB_TOKEN = value;
-                                break;
-                            case 'REPO_OWNER':
-                                DEFAULT_CONFIG.REPO_OWNER = value;
-                                break;
-                            case 'REPO_NAME':
-                                DEFAULT_CONFIG.REPO_NAME = value;
-                                break;
-                            case 'API_URL':
-                                DEFAULT_CONFIG.API_URL = value;
-                                break;
-                        }
-                    }
-                }
-            });
-
-            if (!GITHUB_TOKEN) {
-                throw new Error('配置文件中未找到GITHUB_TOKEN');
-            }
-
-            CONFIG_LOADED = true;
-            showStatusMessage('✅ 配置加载成功，工具已就绪', 'info');
-            console.log('配置加载成功:', { ...DEFAULT_CONFIG, token: '***隐藏***' });
-
-        } catch (error) {
-            console.error('配置加载错误:', error);
-
-            // 提供手动输入令牌的选项
-            showStatusMessage('⚠️ 配置文件加载失败，请手动输入令牌', 'error');
-
-            const userToken = prompt(
-                '请手动输入GitHub Personal Access Token:\n' +
-                '（需要repo权限，仅本地使用）',
-                ''
-            );
-
-            if (userToken && userToken.trim()) {
-                GITHUB_TOKEN = userToken.trim();
-                CONFIG_LOADED = true;
-                showStatusMessage('✅ 手动令牌已设置，工具已就绪', 'info');
-            } else {
-                showStatusMessage('❌ 需要GitHub令牌才能使用此工具', 'error');
-                submitBtn.disabled = true;
-            }
+        if (submitting) {
+            submitBtn.innerHTML = '<div class="loading"></div> 提交中...';
+        } else {
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交Issue';
         }
     }
 
-    // 表单提交处理
-    issueForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        // 检查配置是否已加载
-        if (!CONFIG_LOADED) {
-            showStatusMessage('❌ 配置未加载，请刷新页面或检查配置文件', 'error');
-            return;
+    // 验证表单
+    function validateForm() {
+        if (!issueTitle.value.trim()) {
+            showStatusMessage('请填写Issue标题', 'error');
+            issueTitle.focus();
+            return false;
         }
 
-        if (!GITHUB_TOKEN) {
-            showStatusMessage('❌ GitHub令牌未设置', 'error');
-            return;
+        if (!issueContent.value.trim()) {
+            showStatusMessage('请填写Issue内容', 'error');
+            issueContent.focus();
+            return false;
         }
 
-        // 获取表单数据
+        if (!markdownOutput.value.trim()) {
+            showStatusMessage('请先转换Markdown内容', 'error');
+            convertBtn.focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    // 加载提示词文件
+    async function loadPromptFile() {
+        try {
+            const response = await fetch(AI_CONFIG.PROMPT_FILE);
+            if (!response.ok) {
+                console.warn(`提示词文件加载失败: ${response.status}，使用内置提示词`);
+                AI_CONFIG.PROMPT_CONTENT = `请将以下用户输入的内容，优化并格式化为一个结构清晰、适合作为GitHub Issue描述的Markdown文本。要求：
+1. 保持原意不变，优化语言表达
+2. 使用合适的Markdown格式（如标题、列表、代码块等）
+3. 如果内容涉及问题描述，请结构化组织
+4. 输出语言与输入语言保持一致
+
+用户输入内容：`;
+                return true;
+            }
+
+            const promptText = await response.text();
+            if (!promptText.trim()) {
+                throw new Error('提示词文件为空');
+            }
+
+            AI_CONFIG.PROMPT_CONTENT = promptText;
+            console.log('提示词文件加载成功，长度:', promptText.length);
+            return true;
+
+        } catch (error) {
+            console.error('加载提示词文件失败:', error);
+            AI_CONFIG.PROMPT_CONTENT = `请将以下文本转换为格式良好的GitHub Issue Markdown描述：
+
+用户输入：`;
+            return true;
+        }
+    }
+
+    // 构建完整提示词
+    function buildFullPrompt(originalText) {
+        let fullPrompt = AI_CONFIG.PROMPT_CONTENT;
+
+        if (!fullPrompt.endsWith('\n')) {
+            fullPrompt += '\n';
+        }
+
+        if (!fullPrompt.includes('用户输入：') && !fullPrompt.includes('User Input:')) {
+            fullPrompt += '\n---\n用户输入：\n';
+        }
+
+        fullPrompt += originalText;
+
+        return fullPrompt;
+    }
+
+    // 检测API提供商类型
+    function detectAPIProvider(baseUrl) {
+        const url = baseUrl.toLowerCase();
+
+        const providerPatterns = [
+            { pattern: 'openai|api.openai.com', provider: 'openai' },
+            { pattern: 'anthropic|api.anthropic.com', provider: 'anthropic' },
+            { pattern: 'deepseek|api.deepseek.com', provider: 'deepseek' },
+            { pattern: 'ollama|localhost|127.0.0.1', provider: 'ollama' },
+            { pattern: 'groq|api.groq.com', provider: 'groq' },
+            { pattern: 'zhipu|open.bigmodel.cn', provider: 'zhipu' },
+            { pattern: 'qwen|dashscope.aliyuncs.com', provider: 'qwen' },
+            { pattern: 'azure|openai.azure.com', provider: 'azure' }
+        ];
+
+        for (const { pattern, provider } of providerPatterns) {
+            if (new RegExp(pattern).test(url)) {
+                return provider;
+            }
+        }
+
+        return 'openai-compatible';
+    }
+
+    // 构建对应API提供商的请求参数
+    function buildAIRequest(provider, fullPrompt) {
+        const commonParams = {
+            model: AI_CONFIG.MODEL,
+            max_tokens: 4000,
+            temperature: 0.3
+        };
+
+        switch(provider) {
+            case 'openai':
+            case 'deepseek':
+            case 'groq':
+            case 'azure':
+            case 'openai-compatible':
+                return {
+                    url: `${AI_CONFIG.BASE_URL}/chat/completions`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        ...commonParams,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
+                            },
+                            { role: 'user', content: fullPrompt }
+                        ],
+                        stream: false
+                    })
+                };
+
+            case 'anthropic':
+                return {
+                    url: `${AI_CONFIG.BASE_URL}/v1/messages`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': AI_CONFIG.API_KEY,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.MODEL,
+                        max_tokens: 4000,
+                        messages: [
+                            { role: 'user', content: fullPrompt }
+                        ],
+                        system: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
+                    })
+                };
+
+            case 'ollama':
+                return {
+                    url: `${AI_CONFIG.BASE_URL}/api/chat`,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.MODEL,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
+                            },
+                            { role: 'user', content: fullPrompt }
+                        ],
+                        stream: false,
+                        options: {
+                            temperature: 0.3,
+                            num_predict: 4000
+                        }
+                    })
+                };
+
+            case 'zhipu':
+                return {
+                    url: `${AI_CONFIG.BASE_URL}/chat/completions`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.MODEL,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
+                            },
+                            { role: 'user', content: fullPrompt }
+                        ],
+                        temperature: 0.3,
+                        max_tokens: 4000
+                    })
+                };
+
+            case 'qwen':
+                return {
+                    url: `${AI_CONFIG.BASE_URL}/api/v1/services/aigc/text-generation/generation`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.MODEL,
+                        input: {
+                            messages: [
+                                {
+                                    role: 'system',
+                                    content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
+                                },
+                                { role: 'user', content: fullPrompt }
+                            ]
+                        },
+                        parameters: {
+                            temperature: 0.3,
+                            max_tokens: 4000
+                        }
+                    })
+                };
+
+            default:
+                return {
+                    url: `${AI_CONFIG.BASE_URL}/chat/completions`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        ...commonParams,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
+                            },
+                            { role: 'user', content: fullPrompt }
+                        ],
+                        stream: false
+                    })
+                };
+        }
+    }
+
+    // 解析不同API的响应
+    function parseAIResponse(provider, data) {
+        try {
+            let content = '';
+
+            switch(provider) {
+                case 'openai':
+                case 'deepseek':
+                case 'groq':
+                case 'azure':
+                case 'openai-compatible':
+                case 'zhipu':
+                    content = data.choices[0]?.message?.content || '';
+                    break;
+
+                case 'anthropic':
+                    content = data.content[0]?.text || '';
+                    break;
+
+                case 'ollama':
+                    content = data.message?.content || '';
+                    break;
+
+                case 'qwen':
+                    content = data.output?.text || data.output?.choices?.[0]?.message?.content || '';
+                    break;
+
+                default:
+                    if (data.choices && data.choices[0]?.message?.content) {
+                        content = data.choices[0].message.content;
+                    } else if (data.content) {
+                        content = data.content;
+                    } else if (data.message) {
+                        content = data.message.content || data.message;
+                    } else if (data.output) {
+                        content = data.output.text || JSON.stringify(data.output);
+                    }
+            }
+
+            content = content.trim();
+
+            const unwantedPrefixes = [
+                '好的，',
+                '以下是',
+                '根据您的要求',
+                '根据用户输入',
+                '转换后的Markdown如下：',
+                'Markdown格式：'
+            ];
+
+            for (const prefix of unwantedPrefixes) {
+                if (content.startsWith(prefix)) {
+                    content = content.substring(prefix.length).trim();
+                }
+            }
+
+            return content;
+
+        } catch (error) {
+            console.error('解析AI响应失败:', error, data);
+            return '';
+        }
+    }
+
+    // 转换为Markdown
+    async function convertToMarkdown() {
         const title = issueTitle.value.trim();
         const body = issueContent.value.trim();
 
-        // 表单验证
+        if (!AI_CONFIG.IS_CONFIGURED) {
+            showStatusMessage('❌ AI配置未加载完成', 'error');
+            return;
+        }
+
         if (!title) {
-            showStatusMessage('请填写Issue标题', 'error');
+            showStatusMessage('请先填写Issue标题', 'error');
             issueTitle.focus();
             return;
         }
 
         if (!body) {
-            showStatusMessage('请填写Issue内容', 'error');
+            showStatusMessage('请先填写Issue内容', 'error');
             issueContent.focus();
             return;
         }
 
-        // 禁用提交按钮，显示加载状态
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<div class="loading"></div> 提交中...';
-
-        // 显示正在提交的状态
-        showStatusMessage('正在提交Issue到GitHub...', 'info');
+        updateButtonState(true, false);
+        showStatusMessage(`🤖 正在使用 ${AI_CONFIG.MODEL} 转换Markdown...`, 'info');
 
         try {
-            // 构建API URL
-            const apiUrl = `${DEFAULT_CONFIG.API_URL}/repos/${DEFAULT_CONFIG.REPO_OWNER}/${DEFAULT_CONFIG.REPO_NAME}/issues`;
+            const fullPrompt = buildFullPrompt(body);
+            const provider = detectAPIProvider(AI_CONFIG.BASE_URL);
+            const requestConfig = buildAIRequest(provider, fullPrompt);
 
-            // 调用GitHub API创建Issue
+            const response = await fetch(requestConfig.url, {
+                method: 'POST',
+                headers: requestConfig.headers,
+                body: requestConfig.body
+            });
+
+            if (!response.ok) {
+                let errorMessage = `AI API错误 (${response.status})`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage += `: ${errorData.error?.message || JSON.stringify(errorData)}`;
+                } catch (e) {
+                    errorMessage += `: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            const formattedText = parseAIResponse(provider, data);
+
+            if (!formattedText.trim()) {
+                throw new Error('AI返回内容为空');
+            }
+
+            // 将结果填入输出框，并允许编辑
+            markdownOutput.value = formattedText;
+            markdownOutput.readOnly = false;
+            markdownOutput.style.backgroundColor = '#ffffff';
+            markdownCharCount.textContent = formattedText.length;
+
+            showStatusMessage(`✅ ${AI_CONFIG.MODEL} 转换完成！可以编辑Markdown内容`, 'success');
+
+        } catch (error) {
+            console.error('AI转换失败:', error);
+            showStatusMessage(`⚠️ AI转换失败: ${error.message}`, 'error');
+        } finally {
+            updateButtonState(false, false);
+        }
+    }
+
+    // 提交Issue到GitHub
+    async function submitIssue() {
+        if (!GITHUB_CONFIG.IS_CONFIGURED) {
+            showStatusMessage('❌ GitHub配置未加载完成', 'error');
+            return;
+        }
+
+        if (!validateForm()) {
+            return;
+        }
+
+        const title = issueTitle.value.trim();
+        const body = markdownOutput.value.trim();
+
+        updateButtonState(false, true);
+        showStatusMessage('🚀 正在提交Issue到GitHub...', 'info');
+
+        try {
+            const apiUrl = `${GITHUB_CONFIG.API_URL}/repos/${GITHUB_CONFIG.REPO_OWNER}/${GITHUB_CONFIG.REPO_NAME}/issues`;
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
                     'Content-Type': 'application/json',
                     'Accept': 'application/vnd.github.v3+json'
                 },
@@ -499,60 +930,123 @@
             const responseData = await response.json();
 
             if (response.ok) {
-                // 成功创建Issue
-                showStatusMessage(`✅ Issue 创建成功！编号: #${responseData.number}`, 'success');
+                showStatusMessage(`✅ Issue #${responseData.number} 创建成功！`, 'success');
 
-                // 清空表单
-                issueForm.reset();
-                charCount.textContent = '0';
-                titleCharCount.textContent = '0';
+                // 清空表单，但保留标题和内容方便继续编辑
+                markdownOutput.value = '';
+                markdownOutput.readOnly = true;
+                markdownOutput.style.backgroundColor = '#f8f9fa';
+                markdownCharCount.textContent = '0';
 
-                // 在新标签页中打开创建的Issue
                 setTimeout(() => {
-                    window.open(responseData.html_url, '_blank');
-                }, 1000);
+                    if (responseData.html_url) {
+                        window.open(responseData.html_url, '_blank');
+                    }
+                }, 1500);
 
             } else {
-                // GitHub API返回错误
-                console.error('GitHub API错误详情:', responseData);
-
-                // 处理常见的错误类型
-                let errorMessage = `提交失败 (${response.status})`;
-
-                if (response.status === 401) {
-                    errorMessage = '认证失败：令牌无效或已过期';
-                } else if (response.status === 403) {
-                    errorMessage = '权限不足：令牌可能没有repo权限或已撤销';
-                } else if (response.status === 404) {
-                    errorMessage = '仓库不存在或无法访问：请检查仓库路径';
-                } else if (responseData.message) {
-                    errorMessage += `: ${responseData.message}`;
-                }
-
+                let errorMessage = `GitHub提交失败 (${response.status})`;
+                if (response.status === 401) errorMessage = 'GitHub认证失败';
+                else if (response.status === 403) errorMessage = 'GitHub权限不足';
+                else if (response.status === 404) errorMessage = '仓库不存在';
+                else if (responseData.message) errorMessage += `: ${responseData.message}`;
                 throw new Error(errorMessage);
             }
 
         } catch (error) {
             console.error('提交失败:', error);
+            showStatusMessage(`提交失败: ${error.message}`, 'error');
+        } finally {
+            updateButtonState(false, false);
+        }
+    }
 
-            // 网络错误或API错误
-            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                showStatusMessage('网络错误：请检查网络连接', 'error');
-            } else {
-                showStatusMessage(`提交失败: ${error.message}`, 'error');
+    // 加载所有配置文件
+    async function loadAllConfig() {
+        try {
+            const response = await fetch('config.conf');
+            if (!response.ok) {
+                throw new Error(`主配置文件加载失败: ${response.status}`);
             }
 
-        } finally {
-            // 恢复提交按钮状态
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交Issue';
-        }
-    });
+            const configText = await response.text();
+            const configLines = configText.split('\n');
 
-    // 页面加载完成时初始化
+            configLines.forEach(line => {
+                if (line.trim() && !line.startsWith('#')) {
+                    const [key, value] = line.split('=').map(s => s.trim());
+                    if (key && value) {
+                        if (['BASE_URL', 'API_KEY', 'MODEL'].includes(key)) {
+                            AI_CONFIG[key] = value;
+                        }
+                        else if (key === 'GITHUB_TOKEN') {
+                            GITHUB_CONFIG.TOKEN = value;
+                        } else if (key === 'REPO_OWNER') {
+                            GITHUB_CONFIG.REPO_OWNER = value;
+                        } else if (key === 'REPO_NAME') {
+                            GITHUB_CONFIG.REPO_NAME = value;
+                        } else if (key === 'GITHUB_API_URL') {
+                            GITHUB_CONFIG.API_URL = value;
+                        } else if (key === 'API_URL') {
+                            GITHUB_CONFIG.API_URL = value;
+                        }
+                        else if (key === 'PROMPT_FILE') {
+                            AI_CONFIG.PROMPT_FILE = value;
+                        }
+                    }
+                }
+            });
+
+            const missingAIConfigs = [];
+            if (!AI_CONFIG.BASE_URL) missingAIConfigs.push('BASE_URL');
+            if (!AI_CONFIG.API_KEY) missingAIConfigs.push('API_KEY');
+            if (!AI_CONFIG.MODEL) missingAIConfigs.push('MODEL');
+
+            if (missingAIConfigs.length > 0) {
+                throw new Error(`AI配置缺少: ${missingAIConfigs.join(', ')}`);
+            }
+
+            const promptLoaded = await loadPromptFile();
+            if (!promptLoaded) {
+                console.warn('提示词文件加载失败，继续使用默认提示词');
+            }
+
+            AI_CONFIG.IS_CONFIGURED = true;
+
+            if (!GITHUB_CONFIG.TOKEN) {
+                const userToken = prompt(
+                    '请手动输入GitHub Personal Access Token:\n' +
+                    '（需要repo权限，仅本地使用）',
+                    ''
+                );
+
+                if (userToken && userToken.trim()) {
+                    GITHUB_CONFIG.TOKEN = userToken.trim();
+                    GITHUB_CONFIG.IS_CONFIGURED = true;
+                } else {
+                    throw new Error('GitHub令牌未设置');
+                }
+            } else {
+                GITHUB_CONFIG.IS_CONFIGURED = true;
+            }
+
+            showStatusMessage(`✅ 配置加载成功！使用模型: ${AI_CONFIG.MODEL}`, 'info');
+            console.log('配置加载成功');
+
+        } catch (error) {
+            console.error('配置加载错误:', error);
+            showStatusMessage(`⚠️ 配置加载失败: ${error.message}`, 'error');
+            convertBtn.disabled = true;
+            submitBtn.disabled = true;
+        }
+    }
+
+    // 页面加载
     window.addEventListener('DOMContentLoaded', async () => {
-        showStatusMessage('正在加载配置...', 'info');
-        await loadConfig();
+        showStatusMessage('正在加载配置和提示词...', 'info');
+        await loadAllConfig();
+        initUIEvents();
+        initCharCounts();
     });
 </script>
 
