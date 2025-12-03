@@ -201,6 +201,34 @@
             border-color: #d1d5da;
         }
 
+        /* 文件选择输入框的隐藏样式 */
+        .file-input-hidden {
+            display: none;
+        }
+
+        /* 按钮悬停效果 */
+        #importTxtBtn {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        #importTxtBtn:hover:not(:disabled) {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+        }
+
+        #importTxtBtn:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+
+        /* 导入中的样式 */
+        #importTxtBtn.importing {
+            background-color: #6c757d;
+            opacity: 0.8;
+        }
+
         .status-message {
             padding: 15px;
             border-radius: 6px;
@@ -384,9 +412,14 @@
 
         <!-- 替换现有的按钮组 -->
         <div class="button-group">
+            <!-- 在现有的按钮组中，在清空按钮后面添加 -->
             <div class="button-group-left">
                 <button type="button" id="clearBtn">
                     <i class="fas fa-eraser"></i> 清空内容
+                </button>
+                <!-- 添加这个新按钮 -->
+                <button type="button" id="importTxtBtn">
+                    <i class="fas fa-file-import"></i> 导入TXT文件
                 </button>
                 <button type="button" id="convertBtn">
                     <i class="fas fa-robot"></i> 转换为Markdown
@@ -425,6 +458,8 @@
     const charCount = document.getElementById('charCount');
     const titleCharCount = document.getElementById('titleCharCount');
     const markdownCharCount = document.getElementById('markdownCharCount');
+    // 获取DOM元素（添加这一行）
+    const importTxtBtn = document.getElementById('importTxtBtn');
 
     // 配置变量
     let AI_CONFIG = {
@@ -459,6 +494,31 @@
             markdownCharCount.textContent = markdownOutput.value.length;
         });
 
+        // 文件导入按钮点击事件
+        importTxtBtn.addEventListener('click', () => {
+            // 创建隐藏的文件输入框
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.txt,text/plain';
+            fileInput.multiple = true; // 允许多选
+            fileInput.className = 'file-input-hidden';
+
+            // 文件选择后的处理
+            fileInput.addEventListener('change', async (e) => {
+                const files = e.target.files;
+                if (files.length === 0) return;
+
+                await processTxtFiles(files);
+
+                // 移除临时文件输入框
+                fileInput.remove();
+            });
+
+            // 触发文件选择对话框
+            document.body.appendChild(fileInput);
+            fileInput.click();
+        });
+
         // 清空表单
         clearBtn.addEventListener('click', () => {
             issueContent.value = '';
@@ -470,6 +530,7 @@
             markdownOutput.readOnly = true;
             markdownOutput.style.backgroundColor = '#f8f9fa';
             hideStatusMessage();
+
         });
 
         // 转换按钮点击事件
@@ -1039,6 +1100,88 @@
             convertBtn.disabled = true;
             submitBtn.disabled = true;
         }
+    }
+
+    // 处理多个TXT文件
+    async function processTxtFiles(files) {
+        if (!files || files.length === 0) return;
+
+        // 更新按钮状态
+        importTxtBtn.disabled = true;
+        importTxtBtn.classList.add('importing');
+        importTxtBtn.innerHTML = '<div class="loading"></div> 导入中...';
+
+        let allContent = '';
+        let fileCount = files.length;
+        let processedCount = 0;
+
+        showStatusMessage(`正在导入 ${fileCount} 个文件...`, 'info');
+
+        // 依次读取每个文件
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            // 检查文件类型
+            if (!file.name.toLowerCase().endsWith('.txt') &&
+                !file.type.includes('text/plain')) {
+                showStatusMessage(`跳过非文本文件: ${file.name}`, 'error');
+                processedCount++;
+                continue;
+            }
+
+            try {
+                const content = await readFileAsText(file);
+                allContent += `\n\n=== 文件 ${i + 1}: ${file.name} ===\n\n`;
+                allContent += content;
+                processedCount++;
+
+                // 更新进度
+                showStatusMessage(`已导入 ${processedCount}/${fileCount} 个文件: ${file.name}`, 'info');
+            } catch (error) {
+                console.error(`读取文件失败 ${file.name}:`, error);
+                showStatusMessage(`读取文件失败: ${file.name}`, 'error');
+            }
+        }
+
+        // 合并内容到文本框
+        if (allContent.trim()) {
+            // 如果当前文本框有内容，添加分隔符
+            const currentContent = issueContent.value.trim();
+            if (currentContent) {
+                issueContent.value = currentContent + '\n\n' + '--- 导入的文件内容 ---' + allContent;
+            } else {
+                issueContent.value = allContent.trim();
+            }
+
+            // 更新字符计数
+            charCount.textContent = issueContent.value.length;
+
+            showStatusMessage(`✅ 成功导入 ${processedCount} 个文件，共 ${allContent.length} 字符`, 'success');
+        } else {
+            showStatusMessage('没有成功导入任何内容', 'error');
+        }
+
+        // 恢复按钮状态
+        importTxtBtn.disabled = false;
+        importTxtBtn.classList.remove('importing');
+        importTxtBtn.innerHTML = '<i class="fas fa-file-import"></i> 导入TXT文件';
+    }
+
+    // 读取文件内容
+    function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                resolve(e.target.result);
+            };
+
+            reader.onerror = (e) => {
+                reject(new Error(`读取文件失败: ${file.name}`));
+            };
+
+            reader.readAsText(file, 'UTF-8');
+        });
     }
 
     // 页面加载
