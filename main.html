@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Issue 提交工具 - 本地测试版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f8fa;
+            color: #24292e;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaecef;
+        }
+
+        h1 {
+            color: #24292e;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .github-icon {
+            color: #24292e;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            color: #586069;
+            font-size: 1.1rem;
+        }
+
+        .target-repo {
+            background-color: #f6f8fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #0366d6;
+        }
+
+        .target-repo h3 {
+            margin-bottom: 8px;
+            color: #0366d6;
+        }
+
+        .target-repo a {
+            color: #0366d6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .target-repo a:hover {
+            text-decoration: underline;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #24292e;
+        }
+
+        .required {
+            color: #d73a49;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            font-size: 16px;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #0366d6;
+            box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+        }
+
+        textarea::placeholder {
+            color: #a0a0a0;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #submitBtn {
+            background-color: #2ea44f;
+            color: white;
+        }
+
+        #submitBtn:hover:not(:disabled) {
+            background-color: #22863a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(46, 164, 79, 0.3);
+        }
+
+        #submitBtn:disabled {
+            background-color: #94d3a2;
+            cursor: not-allowed;
+        }
+
+        #clearBtn {
+            background-color: #fafbfc;
+            color: #24292e;
+            border: 1px solid #e1e4e8;
+        }
+
+        #clearBtn:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5da;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status-icon {
+            font-size: 1.2rem;
+        }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #586069;
+            font-size: 0.9rem;
+            padding-top: 20px;
+            border-top: 1px solid #eaecef;
+            width: 100%;
+        }
+
+        .note {
+            background-color: #fff8e1;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            border-left: 4px solid #ffd54f;
+        }
+
+        .note strong {
+            color: #e65100;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.9rem;
+            color: #586069;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1><i class="fab fa-github github-icon"></i> GitHub Issue 提交工具</h1>
+    <p class="subtitle">将您的内容作为Issue提交到指定的GitHub仓库</p>
+</header>
+
+<div class="container">
+    <div class="target-repo">
+        <h3>目标仓库</h3>
+        <p>您的Issue将被提交到: <a href="https://github.com/yuan-junxi/TaskEcho/issues" target="_blank">https://github.com/yuan-junxi/TaskEcho/issues</a></p>
+    </div>
+
+    <div class="note">
+        <strong>⚠️ 重要安全警告：</strong>
+        此文件仅限本地测试使用！文件中包含您的GitHub令牌，请勿上传或分享此文件。测试后请立即撤销此令牌。
+    </div>
+
+    <form id="issueForm">
+        <div class="form-group">
+            <label for="issueContent">Issue内容 <span class="required">*</span></label>
+            <textarea
+                    id="issueContent"
+                    placeholder="请详细描述您的Issue内容..."
+                    required
+            ></textarea>
+            <div class="char-count">
+                <span id="charCount">0</span> 字符
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="issueTitle">Issue标题 <span class="required">*</span></label>
+            <input
+                    type="text"
+                    id="issueTitle"
+                    placeholder="请输入Issue标题"
+                    required
+                    style="width: 100%; padding: 12px 15px; border: 1px solid #e1e4e8; border-radius: 6px; font-size: 16px; margin-bottom: 5px;"
+            >
+            <div class="char-count">
+                <span id="titleCharCount">0</span> 字符
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button type="button" id="clearBtn">
+                <i class="fas fa-eraser"></i> 清空内容
+            </button>
+            <button type="submit" id="submitBtn">
+                <i class="fas fa-paper-plane"></i> 提交Issue
+            </button>
+        </div>
+    </form>
+
+    <div id="statusMessage" class="status-message">
+        <i class="fas fa-info-circle status-icon"></i>
+        <span id="statusText">状态信息将显示在这里</span>
+    </div>
+</div>
+
+<footer>
+    <p>© 2023 GitHub Issue提交工具 | 此工具使用GitHub REST API | 仅限本地测试</p>
+</footer>
+
+<script>
+    // 获取DOM元素
+    const issueForm = document.getElementById('issueForm');
+    const issueContent = document.getElementById('issueContent');
+    const issueTitle = document.getElementById('issueTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusMessage = document.getElementById('statusMessage');
+    const statusText = document.getElementById('statusText');
+    const charCount = document.getElementById('charCount');
+    const titleCharCount = document.getElementById('titleCharCount');
+
+    // 配置变量 - 将从配置文件加载
+    let GITHUB_TOKEN = '';
+    let CONFIG_LOADED = false;
+    const DEFAULT_CONFIG = {
+        REPO_OWNER: 'yuan-junxi',
+        REPO_NAME: 'TaskEcho',
+        API_URL: 'https://api.github.com'
+    };
+
+    // 字符计数更新
+    issueContent.addEventListener('input', () => {
+        charCount.textContent = issueContent.value.length;
+    });
+
+    issueTitle.addEventListener('input', () => {
+        titleCharCount.textContent = issueTitle.value.length;
+    });
+
+    // 初始化字符计数
+    charCount.textContent = issueContent.value.length;
+    titleCharCount.textContent = issueTitle.value.length;
+
+    // 清空表单
+    clearBtn.addEventListener('click', () => {
+        issueContent.value = '';
+        issueTitle.value = '';
+        charCount.textContent = '0';
+        titleCharCount.textContent = '0';
+        hideStatusMessage();
+    });
+
+    // 显示状态消息
+    function showStatusMessage(message, type) {
+        statusText.textContent = message;
+        statusMessage.className = `status-message ${type}`;
+        statusMessage.style.display = 'flex';
+    }
+
+    // 隐藏状态消息
+    function hideStatusMessage() {
+        statusMessage.style.display = 'none';
+    }
+
+    // 加载配置文件
+    async function loadConfig() {
+        try {
+            const response = await fetch('config.conf');
+            if (!response.ok) {
+                throw new Error(`配置文件加载失败: ${response.status}`);
+            }
+
+            const configText = await response.text();
+            const configLines = configText.split('\n');
+
+            configLines.forEach(line => {
+                if (line.trim() && !line.startsWith('#')) {
+                    const [key, value] = line.split('=').map(s => s.trim());
+                    if (key && value) {
+                        switch(key) {
+                            case 'GITHUB_TOKEN':
+                                GITHUB_TOKEN = value;
+                                break;
+                            case 'REPO_OWNER':
+                                DEFAULT_CONFIG.REPO_OWNER = value;
+                                break;
+                            case 'REPO_NAME':
+                                DEFAULT_CONFIG.REPO_NAME = value;
+                                break;
+                            case 'API_URL':
+                                DEFAULT_CONFIG.API_URL = value;
+                                break;
+                        }
+                    }
+                }
+            });
+
+            if (!GITHUB_TOKEN) {
+                throw new Error('配置文件中未找到GITHUB_TOKEN');
+            }
+
+            CONFIG_LOADED = true;
+            showStatusMessage('✅ 配置加载成功，工具已就绪', 'info');
+            console.log('配置加载成功:', { ...DEFAULT_CONFIG, token: '***隐藏***' });
+
+        } catch (error) {
+            console.error('配置加载错误:', error);
+
+            // 提供手动输入令牌的选项
+            showStatusMessage('⚠️ 配置文件加载失败，请手动输入令牌', 'error');
+
+            const userToken = prompt(
+                '请手动输入GitHub Personal Access Token:\n' +
+                '（需要repo权限，仅本地使用）',
+                ''
+            );
+
+            if (userToken && userToken.trim()) {
+                GITHUB_TOKEN = userToken.trim();
+                CONFIG_LOADED = true;
+                showStatusMessage('✅ 手动令牌已设置，工具已就绪', 'info');
+            } else {
+                showStatusMessage('❌ 需要GitHub令牌才能使用此工具', 'error');
+                submitBtn.disabled = true;
+            }
+        }
+    }
+
+    // 表单提交处理
+    issueForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // 检查配置是否已加载
+        if (!CONFIG_LOADED) {
+            showStatusMessage('❌ 配置未加载，请刷新页面或检查配置文件', 'error');
+            return;
+        }
+
+        if (!GITHUB_TOKEN) {
+            showStatusMessage('❌ GitHub令牌未设置', 'error');
+            return;
+        }
+
+        // 获取表单数据
+        const title = issueTitle.value.trim();
+        const body = issueContent.value.trim();
+
+        // 表单验证
+        if (!title) {
+            showStatusMessage('请填写Issue标题', 'error');
+            issueTitle.focus();
+            return;
+        }
+
+        if (!body) {
+            showStatusMessage('请填写Issue内容', 'error');
+            issueContent.focus();
+            return;
+        }
+
+        // 禁用提交按钮，显示加载状态
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="loading"></div> 提交中...';
+
+        // 显示正在提交的状态
+        showStatusMessage('正在提交Issue到GitHub...', 'info');
+
+        try {
+            // 构建API URL
+            const apiUrl = `${DEFAULT_CONFIG.API_URL}/repos/${DEFAULT_CONFIG.REPO_OWNER}/${DEFAULT_CONFIG.REPO_NAME}/issues`;
+
+            // 调用GitHub API创建Issue
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    body: body
+                })
+            });
+
+            const responseData = await response.json();
+
+            if (response.ok) {
+                // 成功创建Issue
+                showStatusMessage(`✅ Issue 创建成功！编号: #${responseData.number}`, 'success');
+
+                // 清空表单
+                issueForm.reset();
+                charCount.textContent = '0';
+                titleCharCount.textContent = '0';
+
+                // 在新标签页中打开创建的Issue
+                setTimeout(() => {
+                    window.open(responseData.html_url, '_blank');
+                }, 1000);
+
+            } else {
+                // GitHub API返回错误
+                console.error('GitHub API错误详情:', responseData);
+
+                // 处理常见的错误类型
+                let errorMessage = `提交失败 (${response.status})`;
+
+                if (response.status === 401) {
+                    errorMessage = '认证失败：令牌无效或已过期';
+                } else if (response.status === 403) {
+                    errorMessage = '权限不足：令牌可能没有repo权限或已撤销';
+                } else if (response.status === 404) {
+                    errorMessage = '仓库不存在或无法访问：请检查仓库路径';
+                } else if (responseData.message) {
+                    errorMessage += `: ${responseData.message}`;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+        } catch (error) {
+            console.error('提交失败:', error);
+
+            // 网络错误或API错误
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                showStatusMessage('网络错误：请检查网络连接', 'error');
+            } else {
+                showStatusMessage(`提交失败: ${error.message}`, 'error');
+            }
+
+        } finally {
+            // 恢复提交按钮状态
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交Issue';
+        }
+    });
+
+    // 页面加载完成时初始化
+    window.addEventListener('DOMContentLoaded', async () => {
+        showStatusMessage('正在加载配置...', 'info');
+        await loadConfig();
+    });
+</script>
+
+
+</body>
+</html>

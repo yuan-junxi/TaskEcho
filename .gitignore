@@ -1,0 +1,21 @@
+# 默认忽略的文件
+/shelf/
+/.idea/workspace.xml
+# 基于编辑器的 HTTP 客户端请求
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# 安全文件
+config.js
+config.local.js
+local-*.html
+tokens/
+*.token
+.env
+secrets.*
+
+# IDE文件
+.vscode/
+.idea/
