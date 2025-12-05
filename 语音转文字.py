@@ -3,16 +3,16 @@ import whisper
 import os
 import time
 
+# 语音转文字 ————> 把音频文件放到监控的文件夹 ————> 自动转为文本文件，删除原音频文件
+
 # ===== 配置 =====
 WATCH_FOLDER = r"C:\Users\43162\Desktop\video"  # 监控的文件夹
-MODEL_SIZE = "medium"  # 模型大小
+MODEL_SIZE = "medium"  # Whisper模型大小：可选"tiny", "base", "small", "medium", "large", "large-v2", "large-v3"
 CHECK_INTERVAL = 1  # 检查间隔(秒)
 
-#设置ffmpeg路径
+# 需要指定ffmpeg的文件路径
 os.environ["PATH"] += os.pathsep + r"C:\Users\43162\Desktop\ffmpeg-8.0.1-essentials_build\bin"
 
-
-# ===== 简体转换函数=====
 def to_simple(text):
     """繁体转简体"""
     try:
@@ -26,8 +26,6 @@ def to_simple(text):
         except ImportError:
             return text
 
-
-# ===== 处理单个文件 =====
 def process_file(audio_file, model):
     """处理音频文件：完全复制原来成功的逻辑"""
     try:
@@ -68,7 +66,6 @@ def process_file(audio_file, model):
         return False
 
 
-# ===== 主监控循环 =====
 def main():
     print(f"监控文件夹: {WATCH_FOLDER}")
 
@@ -77,7 +74,7 @@ def main():
         os.makedirs(WATCH_FOLDER, exist_ok=True)
         print(f"创建文件夹: {WATCH_FOLDER}")
 
-    # 加载模型 (一次性)
+    # 加载模型
     print(f"加载模型: {MODEL_SIZE}")
     model = whisper.load_model(MODEL_SIZE)
     print("模型加载完成，开始监控...\n")
@@ -104,7 +101,5 @@ def main():
     except KeyboardInterrupt:
         print("\n监控已停止")
 
-
-# ===== 运行 =====
 if __name__ == "__main__":
     main()
