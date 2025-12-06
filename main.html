@@ -1,1198 +1,1495 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitHub Issue 提交工具 - 本地测试版</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              // GitHub 深色模式官方配色
+              github: {
+                primary: "#2f81f7", // GitHub 深色主蓝
+                primaryDark: "#1f6feb", // 主蓝深阶（渐变）
+                secondary: "#3fb950", // GitHub 深色主绿
+                secondaryDark: "#2ea043", // 绿色深阶（渐变）
+                neutral: "#e6edf3", // 主文本色（浅白）
+                neutralLight: "#8b949e", // 次要文本色
+                neutralUltraLight: "#6e7681", // 超浅文本色
+                bg: "#161b22", // 卡片背景（GitHub 深色卡片）
+                bgLight: "#0d1117", // body 背景（GitHub 深色全局背景）
+                bgUltraLight: "#21262d", // 极浅背景（hover/高亮）
+                border: "#30363d", // 边框色
+                borderLight: "#21262d", // 浅边框色
+                danger: "#f85149", // 危险/错误色
+                dangerLight: "#3b181c", // 错误背景
+                warning: "#e3b341", // 警告色
+                warningLight: "#342809", // 警告背景
+                info: "#3fb950", // 信息色
+                infoLight: "#162317", // 信息背景
+                prompt: "#1f2937", // Prompt侧边栏背景
+              },
+            },
+            animation: {
+              "spin-slow": "spin 1s ease-in-out infinite",
+              "fade-in": "fadeIn 0.3s ease-in-out",
+              "pulse-soft": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              "slide-in-right": "slideInRight 0.3s ease-in-out",
+              "slide-out-right": "slideOutRight 0.3s ease-in-out",
+            },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+              slideInRight: {
+                "0%": { transform: "translateX(100%)" },
+                "100%": { transform: "translateX(0)" },
+              },
+              slideOutRight: {
+                "0%": { transform: "translateX(0)" },
+                "100%": { transform: "translateX(100%)" },
+              },
+            },
+            boxShadow: {
+              github: "0 1px 3px rgba(0, 0, 0, 0.1)",
+              "github-hover": "0 4px 6px rgba(0, 0, 0, 0.2)",
+              "github-button": "0 1px 2px rgba(0, 0, 0, 0.2)",
+              "prompt-sidebar": "0 0 20px rgba(0, 0, 0, 0.5)",
+            },
+          },
+        },
+      };
+    </script>
+    <style type="text/tailwindcss">
+      @layer utilities {
+        .content-auto {
+          content-visibility: auto;
         }
-
-        body {
-            background-color: #f5f8fa;
-            color: #24292e;
-            line-height: 1.6;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .file-item-enter {
+          animation: fadeIn 0.3s ease-in-out;
         }
-
-        .container {
-            max-width: 800px;
-            width: 100%;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            padding: 30px;
-            margin-top: 20px;
+        .text-balance {
+          text-wrap: balance;
         }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eaecef;
+        /* 渐变背景类 */
+        .bg-gradient-github-primary {
+          background: linear-gradient(
+            135deg,
+            theme("colors.github.primary"),
+            theme("colors.github.primaryDark")
+          );
         }
-
-        h1 {
-            color: #24292e;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
+        .bg-gradient-github-secondary {
+          background: linear-gradient(
+            135deg,
+            theme("colors.github.secondary"),
+            theme("colors.github.secondaryDark")
+          );
         }
-
-        .github-icon {
-            color: #24292e;
-            font-size: 1.8rem;
+        .bg-gradient-github-neutral {
+          background: linear-gradient(
+            135deg,
+            theme("colors.github.neutralLight"),
+            #484f58
+          );
         }
-
-        .subtitle {
-            color: #586069;
-            font-size: 1.1rem;
+        .bg-gradient-github-bg {
+          background: linear-gradient(
+            135deg,
+            theme("colors.github.bg"),
+            theme("colors.github.bgUltraLight")
+          );
         }
-
-        .target-repo {
-            background-color: #f6f8fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            border-left: 4px solid #0366d6;
+        .border-gradient-github {
+          border-image: linear-gradient(
+              135deg,
+              theme("colors.github.primary"),
+              theme("colors.github.secondary")
+            )
+            1;
         }
-
-        .target-repo h3 {
-            margin-bottom: 8px;
-            color: #0366d6;
+        /* 侧边栏遮罩 */
+        .sidebar-overlay {
+          backdrop-filter: blur(2px);
+          background-color: rgba(0, 0, 0, 0.7);
         }
-
-        .target-repo a {
-            color: #0366d6;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .target-repo a:hover {
-            text-decoration: underline;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #24292e;
-        }
-
-        .required {
-            color: #d73a49;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 200px;
-            padding: 15px;
-            border: 1px solid #e1e4e8;
-            border-radius: 6px;
-            font-size: 16px;
-            resize: vertical;
-            transition: border-color 0.2s;
-            font-family: inherit;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: #0366d6;
-            box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
-        }
-
-        textarea::placeholder {
-            color: #a0a0a0;
-        }
-
-        #markdownOutput {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            background-color: #f8f9fa;
-        }
-
-        #markdownOutput:not([readonly]) {
-            background-color: #ffffff;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: space-between;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .button-group-left, .button-group-right {
-            display: flex;
-            gap: 15px;
-        }
-
-        button {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-
-        #convertBtn {
-            background-color: #0366d6;
-            color: white;
-        }
-
-        #convertBtn:hover:not(:disabled) {
-            background-color: #0256c7;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(3, 102, 214, 0.3);
-        }
-
-        #convertBtn:disabled {
-            background-color: #79b8ff;
-            cursor: not-allowed;
-        }
-
-        #submitBtn {
-            background-color: #2ea44f;
-            color: white;
-        }
-
-        #submitBtn:hover:not(:disabled) {
-            background-color: #22863a;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(46, 164, 79, 0.3);
-        }
-
-        #submitBtn:disabled {
-            background-color: #94d3a2;
-            cursor: not-allowed;
-        }
-
-        #clearBtn {
-            background-color: #fafbfc;
-            color: #24292e;
-            border: 1px solid #e1e4e8;
-        }
-
-        #clearBtn:hover {
-            background-color: #f3f4f6;
-            border-color: #d1d5da;
-        }
-
-        /* 文件选择输入框的隐藏样式 */
-        .file-input-hidden {
-            display: none;
-        }
-
-        /* 按钮悬停效果 */
-        #importTxtBtn {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        #importTxtBtn:hover:not(:disabled) {
-            background-color: #5a6268;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
-        }
-
-        #importTxtBtn:disabled {
-            background-color: #a0a0a0;
-            cursor: not-allowed;
-        }
-
-        /* 导入中的样式 */
-        #importTxtBtn.importing {
-            background-color: #6c757d;
-            opacity: 0.8;
-        }
-
-        .status-message {
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 20px;
-            display: none;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .status-icon {
-            font-size: 1.2rem;
-        }
-
-        footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #586069;
-            font-size: 0.9rem;
-            padding-top: 20px;
-            border-top: 1px solid #eaecef;
-            width: 100%;
-        }
-
-        .note {
-            background-color: #fff8e1;
-            padding: 12px 15px;
-            border-radius: 6px;
-            margin-top: 20px;
-            font-size: 0.9rem;
-            border-left: 4px solid #ffd54f;
-        }
-
-        .note strong {
-            color: #e65100;
-        }
-
-        .char-count {
-            text-align: right;
-            font-size: 0.9rem;
-            color: #586069;
-            margin-top: 5px;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-                margin-top: 10px;
-            }
-
-            .button-group {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .button-group-left, .button-group-right {
-                width: 100%;
-                flex-direction: column;
-            }
-
-            button {
-                width: 100%;
-                padding: 12px 20px;
-            }
-
-            textarea {
-                min-height: 150px;
-                padding: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 10px;
-            }
-
-            .container {
-                padding: 15px;
-            }
-
-            h1 {
-                font-size: 1.5rem;
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .subtitle {
-                font-size: 1rem;
-            }
-        }
+      }
     </style>
-</head>
-<body>
-<header>
-    <h1><i class="fab fa-github github-icon"></i> GitHub Issue 提交工具</h1>
-    <p class="subtitle">将您的内容作为Issue提交到指定的GitHub仓库</p>
-</header>
+  </head>
+  <!-- body 背景为 GitHub 深色全局背景 #0d1117 -->
+  <body
+    class="bg-github-bgLight text-github-neutral min-h-screen flex flex-col items-center p-4 sm:p-5"
+  >
+    <!-- Prompt编辑侧边栏（默认隐藏） -->
+    <div
+      id="promptSidebarOverlay"
+      class="fixed inset-0 sidebar-overlay z-40 hidden"
+    ></div>
+    <div
+      id="promptSidebar"
+      class="fixed top-0 right-0 h-full w-full sm:w-[400px] md:w-[500px] bg-github-prompt border-l border-github-border shadow-prompt-sidebar z-50 transform translate-x-full transition-transform duration-300 flex flex-col"
+    >
+      <!-- 侧边栏头部 -->
+      <div
+        class="p-4 border-b border-github-border flex justify-between items-center bg-github-bg"
+      >
+        <h3 class="font-semibold text-lg flex items-center gap-2">
+          <i class="fas fa-file-code text-github-primary"></i>
+          编辑 AI 提示词 (prompt.txt)
+        </h3>
+        <button
+          id="closePromptSidebar"
+          class="p-2 rounded hover:bg-github-bgUltraLight transition-colors text-github-neutralLight"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
 
-<div class="container">
-    <div class="target-repo">
-        <h3>目标仓库</h3>
-        <p>您的Issue将被提交到: <a href="https://github.com/yuan-junxi/TaskEcho/issues" target="_blank">https://github.com/yuan-junxi/TaskEcho/issues</a></p>
-    </div>
-
-    <div class="note">
-        <strong>⚠️ 重要安全警告：</strong>
-        此文件仅限本地测试使用！文件中包含您的GitHub令牌，请勿上传或分享此文件。测试后请立即撤销此令牌。
-    </div>
-
-    <form id="issueForm">
-        <div class="form-group">
-            <label for="issueContent">Issue内容 <span class="required">*</span></label>
-            <textarea
-                    id="issueContent"
-                    placeholder="请详细描述您的Issue内容..."
-                    required
-            ></textarea>
-            <div class="char-count">
-                <span id="charCount">0</span> 字符
-            </div>
+      <!-- 侧边栏内容 -->
+      <div class="flex-1 overflow-auto p-4">
+        <div class="mb-3">
+          <label class="block text-sm text-github-neutralLight mb-1">
+            提示词内容（用于指导AI转换Markdown）
+          </label>
+          <textarea
+            id="promptEditor"
+            class="w-full min-h-[300px] px-4 py-3 border border-github-border rounded-md font-mono text-sm bg-github-bgUltraLight text-white placeholder:text-github-neutralUltraLight focus:outline-none focus:border-github-primary focus:ring-2 focus:ring-github-primary/10"
+            placeholder="请输入AI提示词，{TITLE}会自动替换为Issue标题..."
+          ></textarea>
         </div>
+        <div class="text-xs text-github-neutralUltraLight mb-4">
+          <p class="mb-1">
+            <i class="fas fa-info-circle text-github-primary"></i> 变量说明：
+          </p>
+          <p>- {TITLE}：会自动替换为你输入的Issue标题</p>
+          <p>- 提示词将指导AI如何格式化导入的文件内容</p>
+          <p class="mt-2 text-github-warning">
+            ⚠️ 保存后仅当前会话生效，刷新页面会恢复本地prompt.txt内容
+          </p>
+        </div>
+      </div>
 
-        <div class="form-group">
-            <label for="issueTitle">Issue标题 <span class="required">*</span></label>
-            <input
-                    type="text"
-                    id="issueTitle"
-                    placeholder="请输入Issue标题"
-                    required
-                    style="width: 100%; padding: 12px 15px; border: 1px solid #e1e4e8; border-radius: 6px; font-size: 16px; margin-bottom: 5px;"
+      <!-- 侧边栏底部按钮 -->
+      <div
+        class="p-4 border-t border-github-border bg-github-bg flex justify-between gap-3"
+      >
+        <button
+          id="resetPromptBtn"
+          class="px-4 py-2 bg-github-bgUltraLight text-github-neutral border border-github-border rounded-md font-medium hover:bg-github-bgUltraLight/80 transition-colors"
+        >
+          <i class="fas fa-undo mr-1"></i> 重置为默认
+        </button>
+        <div class="flex gap-3">
+          <button
+            id="copyPromptBtn"
+            class="px-4 py-2 bg-gradient-github-neutral text-white rounded-md font-medium hover:-translate-y-0.5 transition-all"
+          >
+            <i class="fas fa-copy mr-1"></i> 复制内容
+          </button>
+          <button
+            id="savePromptBtn"
+            class="px-4 py-2 bg-gradient-github-primary text-white rounded-md font-medium hover:-translate-y-0.5 transition-all"
+          >
+            <i class="fas fa-save mr-1"></i> 保存修改
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 头部 - 渐变背景增强 -->
+    <header
+      class="text-center mb-6 sm:mb-8 pb-4 sm:pb-5 border-b border-github-borderLight w-full max-w-[800px] bg-gradient-github-bg rounded-xl p-3 mb-8"
+    >
+      <h1
+        class="text-github-neutral mb-2 sm:mb-3 flex items-center justify-center gap-3 md:flex-row flex-col md:text-[clamp(1.5rem,3vw,2rem)] text-[clamp(1.2rem,3vw,1.5rem)] font-bold"
+      >
+        <i class="fab fa-github text-2xl sm:text-3xl text-github-primary"></i>
+        GitHub Issue 提交工具
+      </h1>
+      <p class="text-github-neutralLight text-base sm:text-lg text-balance">
+        将本地 TXT 文件内容转换为 Markdown 并提交到指定 GitHub 仓库
+      </p>
+    </header>
+
+    <!-- 主容器 - GitHub 深色卡片风格 + 渐变 hover -->
+    <div
+      class="w-full max-w-[800px] bg-github-bg rounded-xl shadow-github p-5 sm:p-6 md:p-7 mt-2 transition-all duration-300 hover:shadow-github-hover hover:border border-github-border/50"
+    >
+      <!-- 目标仓库 + 编辑提示词按钮 -->
+      <div
+        class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-3"
+      >
+        <div
+          class="bg-github-bgUltraLight p-4 rounded-lg border-l-4 border-github-primary bg-gradient-to-r from-github-primary/10 to-transparent w-full sm:w-auto flex-1"
+        >
+          <h3
+            class="text-github-primary font-semibold mb-2 flex items-center gap-2"
+          >
+            <i class="fas fa-repository"></i> 目标仓库
+          </h3>
+          <p class="text-sm sm:text-base">
+            您的 Issue 将被提交到:
+            <a
+              href="https://github.com/yuan-junxi/TaskEcho/issues"
+              target="_blank"
+              class="text-github-primary font-medium hover:underline inline-flex items-center gap-1 transition-colors"
             >
-            <div class="char-count">
-                <span id="titleCharCount">0</span> 字符
-            </div>
+              <i class="fab fa-github text-xs"></i> yuan-junxi/TaskEcho
+            </a>
+          </p>
+        </div>
+        <!-- 新增：编辑提示词按钮 -->
+        <button
+          id="editPromptBtn"
+          class="px-4 py-2 bg-gradient-github-neutral text-white rounded-md font-semibold flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-github-button transition-all duration-200 w-full sm:w-auto"
+        >
+          <i class="fas fa-file-code"></i> 编辑 AI 提示词
+        </button>
+      </div>
+
+      <!-- 安全提示 - GitHub 警告色风格 -->
+      <div
+        class="bg-github-warningLight p-3 rounded-lg border-l-4 border-github-warning mb-5 sm:mb-6 text-sm animate-fade-in"
+      >
+        <div class="flex items-start gap-2">
+          <strong class="text-github-warning flex-shrink-0">⚠️</strong>
+          <p class="text-github-warning">
+            此文件仅限本地测试使用！文件中包含您的 GitHub
+            令牌，请勿上传或分享此文件。测试后请立即撤销此令牌。
+          </p>
+        </div>
+      </div>
+
+      <!-- 表单区域 -->
+      <form id="issueForm" class="w-full">
+        <!-- Issue 标题（前置）- 字体白色 -->
+        <div class="mb-5 sm:mb-6">
+          <label
+            for="issueTitle"
+            class="block mb-2 font-semibold text-github-neutral flex items-center gap-1"
+          >
+            <i class="fas fa-heading text-sm"></i> Issue标题
+            <span class="text-github-danger">*</span>
+          </label>
+          <input
+            type="text"
+            id="issueTitle"
+            placeholder="请输入清晰、简洁的 Issue 标题（如：修复登录页面兼容性问题）"
+            required
+            class="w-full px-4 py-3 border border-github-borderLight rounded-md text-base focus:outline-none focus:border-github-primary focus:ring-2 focus:ring-github-primary/10 transition-all duration-200 bg-github-bgUltraLight text-white shadow-sm placeholder:text-github-neutralUltraLight"
+          />
+          <div
+            class="text-right text-sm text-github-neutralLight mt-1 flex justify-between items-center"
+          >
+            <span class="text-xs text-github-neutralUltraLight"
+              >建议长度：10-50 字符</span
+            >
+            <span id="titleCharCount" class="font-mono">0</span> 字符
+          </div>
         </div>
 
-        <!-- 在现有的表单中，在 Issue标题 输入框之后添加 -->
+        <!-- 文件拖拽/导入区域 - 渐变 hover 效果 -->
+        <div
+          id="dropArea"
+          class="mb-5 sm:mb-6 border-2 border-dashed border-github-borderLight rounded-lg p-6 sm:p-8 text-center hover:border-github-primary hover:bg-github-bgUltraLight/80 transition-all duration-300 cursor-pointer group bg-gradient-to-br from-github-bg to-github-bgUltraLight/50"
+        >
+          <i
+            class="fas fa-file-import text-3xl sm:text-4xl text-github-neutralLight mb-3 group-hover:text-github-primary transition-colors"
+          ></i>
+          <p class="text-github-neutralLight mb-4 text-balance">
+            拖拽 TXT 文件到此处，或点击下方按钮导入
+          </p>
+          <!-- 导入按钮 - GitHub 中性渐变 -->
+          <button
+            type="button"
+            id="importTxtBtn"
+            class="px-6 py-3 bg-gradient-github-neutral text-white rounded-md font-semibold flex items-center justify-center gap-2 mx-auto hover:-translate-y-0.5 hover:shadow-github-button transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+          >
+            <i class="fas fa-file-import"></i> 选择 TXT 文件导入
+          </button>
+          <input
+            type="file"
+            id="fileInput"
+            class="hidden"
+            accept=".txt,text/plain"
+            multiple
+          />
 
-        <div class="form-group">
-            <label for="markdownOutput">AI生成的Markdown <span class="required">*</span></label>
+          <!-- 已导入文件列表 -->
+          <div id="fileListContainer" class="mt-5 hidden">
+            <h4
+              class="text-sm font-semibold text-github-neutralLight mb-2 flex items-center gap-2"
+            >
+              <i class="fas fa-files-o"></i> 已导入文件 (<span id="fileCount"
+                >0</span
+              >)
+            </h4>
+            <div
+              id="fileList"
+              class="max-h-[200px] overflow-y-auto pr-2 space-y-2"
+            ></div>
+            <div
+              class="mt-2 text-xs text-github-neutralUltraLight flex justify-between"
+            >
+              <span>总字符数：<span id="totalFileChars">0</span></span>
+              <span>总大小：<span id="totalFileSize">0 B</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Markdown 编辑区域 - 适配深色 -->
+        <div class="mb-5 sm:mb-6">
+          <label
+            for="markdownOutput"
+            class="block mb-2 font-semibold text-github-neutral flex items-center gap-1"
+          >
+            <i class="fab fa-markdown text-sm"></i> AI 生成的 Markdown
+            <span class="text-github-danger">*</span>
+          </label>
+          <div class="relative">
             <textarea
-                    id="markdownOutput"
-                    placeholder="点击"转换为Markdown"按钮后，AI生成的内容将显示在这里。您可以编辑此内容。"
-            readonly
+              id="markdownOutput"
+              placeholder="导入文件后，点击「转换为 Markdown」按钮生成内容，可直接编辑..."
+              class="w-full min-h-[200px] sm:min-h-[250px] px-4 py-3 border border-github-borderLight rounded-md text-base resize-vertical focus:outline-none focus:border-github-primary focus:ring-2 focus:ring-github-primary/10 transition-all duration-200 font-mono text-sm bg-github-bgUltraLight text-white placeholder:text-github-neutralUltraLight readonly:bg-github-bgUltraLight/80 read-write:bg-github-bgUltraLight shadow-sm"
+              readonly
             ></textarea>
-            <div class="char-count">
-                <span id="markdownCharCount">0</span> 字符
+            <!-- 编辑状态提示 - GitHub 主色渐变 -->
+            <div
+              id="markdownEditHint"
+              class="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-gradient-github-primary text-white hidden"
+            >
+              <i class="fas fa-pencil-alt"></i> 可编辑
             </div>
+          </div>
+          <div
+            class="text-right text-sm text-github-neutralLight mt-1 flex justify-between items-center"
+          >
+            <span class="text-xs text-github-neutralUltraLight"
+              >建议长度：50-2000 字符</span
+            >
+            <span id="markdownCharCount" class="font-mono">0</span> 字符
+          </div>
         </div>
 
-        <!-- 替换现有的按钮组 -->
-        <div class="button-group">
-            <!-- 在现有的按钮组中，在清空按钮后面添加 -->
-            <div class="button-group-left">
-                <button type="button" id="clearBtn">
-                    <i class="fas fa-eraser"></i> 清空内容
-                </button>
-                <!-- 添加这个新按钮 -->
-                <button type="button" id="importTxtBtn">
-                    <i class="fas fa-file-import"></i> 导入TXT文件
-                </button>
-                <button type="button" id="convertBtn">
-                    <i class="fas fa-robot"></i> 转换为Markdown
-                </button>
-            </div>
-            <div class="button-group-right">
-                <button type="submit" id="submitBtn">
-                    <i class="fas fa-paper-plane"></i> 提交Issue
-                </button>
-            </div>
+        <!-- 按钮组 -->
+        <div
+          class="flex flex-col md:flex-row justify-between gap-3 sm:gap-4 mt-4"
+        >
+          <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <!-- 清空按钮 - GitHub 极浅背景 -->
+            <button
+              type="button"
+              id="clearBtn"
+              class="px-6 py-3 bg-github-bgUltraLight text-github-neutral border border-github-borderLight rounded-md font-semibold flex items-center justify-center gap-2 hover:bg-github-bgUltraLight/80 hover:-translate-y-0.5 hover:shadow-github-button transition-all duration-200 w-full sm:w-auto"
+            >
+              <i class="fas fa-eraser"></i> 清空所有内容
+            </button>
+            <!-- 转换按钮 - GitHub 主色渐变 -->
+            <button
+              type="button"
+              id="convertBtn"
+              class="px-6 py-3 bg-gradient-github-primary text-white rounded-md font-semibold flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-github-button transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none w-full sm:w-auto"
+            >
+              <i class="fas fa-robot"></i> 转换为 Markdown
+            </button>
+          </div>
+          <!-- 提交按钮 - GitHub 绿色渐变 -->
+          <button
+            type="submit"
+            id="submitBtn"
+            class="px-6 py-3 bg-gradient-github-secondary text-white rounded-md font-semibold flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-github-button transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none w-full md:w-auto"
+          >
+            <i class="fas fa-paper-plane"></i> 提交 Issue 到 GitHub
+          </button>
         </div>
-    </form>
+      </form>
 
-    <div id="statusMessage" class="status-message">
-        <i class="fas fa-info-circle status-icon"></i>
-        <span id="statusText">状态信息将显示在这里</span>
+      <!-- 状态提示 - 渐变背景区分类型 -->
+      <div
+        id="statusMessage"
+        class="mt-5 p-4 rounded-md flex items-center gap-3 hidden animate-fade-in"
+      >
+        <i class="fas fa-info-circle text-lg status-icon flex-shrink-0"></i>
+        <span id="statusText" class="text-balance">状态信息将显示在这里</span>
+      </div>
     </div>
-</div>
 
-<footer>
-    <p>© 2023 GitHub Issue提交工具 | 此工具使用GitHub REST API | 仅限本地测试</p>
-</footer>
+    <!-- 页脚 - GitHub 深色风格 -->
+    <footer
+      class="mt-8 text-center text-github-neutralLight text-sm pt-5 border-t border-github-borderLight w-full max-w-[800px] bg-github-bg rounded-xl p-3"
+    >
+      <div
+        class="flex flex-col sm:flex-row justify-center items-center gap-2 text-xs sm:text-sm"
+      >
+        <p>© 2025 GitHub Issue 提交工具</p>
+        <span class="hidden sm:inline">|</span>
+        <p>基于 GitHub REST API & AI 驱动</p>
+        <span class="hidden sm:inline">|</span>
+        <p>仅限本地测试使用</p>
+      </div>
+    </footer>
 
+    <script>
+      // DOM 元素获取
+      const issueForm = document.getElementById("issueForm");
+      const issueTitle = document.getElementById("issueTitle");
+      const markdownOutput = document.getElementById("markdownOutput");
+      const submitBtn = document.getElementById("submitBtn");
+      const convertBtn = document.getElementById("convertBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const importTxtBtn = document.getElementById("importTxtBtn");
+      const fileInput = document.getElementById("fileInput");
+      const dropArea = document.getElementById("dropArea");
+      const statusMessage = document.getElementById("statusMessage");
+      const statusText = document.getElementById("statusText");
+      const titleCharCount = document.getElementById("titleCharCount");
+      const markdownCharCount = document.getElementById("markdownCharCount");
+      const statusIcon = statusMessage.querySelector(".status-icon");
+      const fileListContainer = document.getElementById("fileListContainer");
+      const fileList = document.getElementById("fileList");
+      const fileCount = document.getElementById("fileCount");
+      const totalFileChars = document.getElementById("totalFileChars");
+      const totalFileSize = document.getElementById("totalFileSize");
+      const markdownEditHint = document.getElementById("markdownEditHint");
 
-<script>
-    // 获取DOM元素
-    const issueForm = document.getElementById('issueForm');
-    const issueContent = document.getElementById('issueContent');
-    const issueTitle = document.getElementById('issueTitle');
-    const markdownOutput = document.getElementById('markdownOutput');
-    const submitBtn = document.getElementById('submitBtn');
-    const convertBtn = document.getElementById('convertBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const statusMessage = document.getElementById('statusMessage');
-    const statusText = document.getElementById('statusText');
-    const charCount = document.getElementById('charCount');
-    const titleCharCount = document.getElementById('titleCharCount');
-    const markdownCharCount = document.getElementById('markdownCharCount');
-    // 获取DOM元素（添加这一行）
-    const importTxtBtn = document.getElementById('importTxtBtn');
+      // Prompt侧边栏相关元素
+      const editPromptBtn = document.getElementById("editPromptBtn");
+      const promptSidebar = document.getElementById("promptSidebar");
+      const promptSidebarOverlay = document.getElementById(
+        "promptSidebarOverlay"
+      );
+      const closePromptSidebar = document.getElementById("closePromptSidebar");
+      const promptEditor = document.getElementById("promptEditor");
+      const savePromptBtn = document.getElementById("savePromptBtn");
+      const resetPromptBtn = document.getElementById("resetPromptBtn");
+      const copyPromptBtn = document.getElementById("copyPromptBtn");
 
-    // 配置变量
-    let AI_CONFIG = {
-        BASE_URL: '',
-        API_KEY: '',
-        MODEL: '',
-        PROMPT_FILE: 'prompt.txt',
-        PROMPT_CONTENT: '',
-        IS_CONFIGURED: false
-    };
+      // 配置变量
+      let AI_CONFIG = {
+        BASE_URL: "",
+        API_KEY: "",
+        MODEL: "",
+        PROMPT_FILE: "prompt.txt",
+        PROMPT_CONTENT: "",
+        ORIGINAL_PROMPT: "", // 保存原始prompt用于重置
+        IS_CONFIGURED: false,
+      };
 
-    let GITHUB_CONFIG = {
-        TOKEN: '',
-        REPO_OWNER: 'yuan-junxi',
-        REPO_NAME: 'TaskEcho',
-        API_URL: 'https://api.github.com',
-        IS_CONFIGURED: false
-    };
+      let GITHUB_CONFIG = {
+        TOKEN: "",
+        REPO_OWNER: "yuan-junxi",
+        REPO_NAME: "TaskEcho",
+        API_URL: "https://api.github.com",
+        IS_CONFIGURED: false,
+      };
 
-    // 初始化DOM事件
-    function initUIEvents() {
-        // 字符计数更新
-        issueContent.addEventListener('input', () => {
-            charCount.textContent = issueContent.value.length;
+      // 存储导入的文件信息
+      let importedFiles = [];
+      let importedContent = ""; // 恢复文件内容存储变量
+
+      // 格式化文件大小
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
+      // 更新文件列表展示
+      function updateFileList() {
+        if (importedFiles.length === 0) {
+          fileListContainer.classList.add("hidden");
+          fileCount.textContent = "0";
+          totalFileChars.textContent = "0";
+          totalFileSize.textContent = "0 B";
+          return;
+        }
+
+        // 显示文件列表容器
+        fileListContainer.classList.remove("hidden");
+
+        // 清空现有列表
+        fileList.innerHTML = "";
+
+        // 计算总数
+        const totalChars = importedFiles.reduce(
+          (sum, file) => sum + file.content.length,
+          0
+        );
+        const totalSize = importedFiles.reduce(
+          (sum, file) => sum + file.size,
+          0
+        );
+
+        // 更新统计信息
+        fileCount.textContent = importedFiles.length;
+        totalFileChars.textContent = totalChars;
+        totalFileSize.textContent = formatFileSize(totalSize);
+
+        // 生成文件列表项（GitHub 深色风格）
+        importedFiles.forEach((file, index) => {
+          const fileItem = document.createElement("div");
+          fileItem.className =
+            "flex items-center justify-between p-2 bg-github-bgUltraLight/50 rounded border border-github-borderLight hover:bg-github-bgUltraLight hover:border-github-primary/30 transition-colors file-item-enter";
+          fileItem.innerHTML = `
+                  <div class="flex items-center gap-2 truncate">
+                      <i class="fas fa-file-alt text-github-neutralLight flex-shrink-0"></i>
+                      <div class="truncate">
+                          <span class="font-medium truncate text-github-neutral">${
+                            file.name
+                          }</span>
+                          <span class="text-xs text-github-neutralUltraLight ml-2">${formatFileSize(
+                            file.size
+                          )} / ${file.content.length} 字符</span>
+                      </div>
+                  </div>
+                  <button type="button" data-index="${index}" class="text-github-danger hover:text-github-danger/80 transition-colors flex-shrink-0 p-1 rounded hover:bg-github-danger/5">
+                      <i class="fas fa-times"></i>
+                  </button>
+              `;
+
+          // 删除文件事件
+          const deleteBtn = fileItem.querySelector("button");
+          deleteBtn.addEventListener("click", () => {
+            removeFile(index);
+          });
+
+          fileList.appendChild(fileItem);
+        });
+      }
+
+      // 移除单个文件
+      function removeFile(index) {
+        const removedFile = importedFiles[index];
+        importedFiles.splice(index, 1);
+
+        // 重新生成导入内容
+        importedContent = importedFiles
+          .map((file) => `\n\n=== 文件 ${file.name} ===\n\n${file.content}`)
+          .join("")
+          .trim();
+
+        // 更新文件列表
+        updateFileList();
+        // 提示
+        showStatusMessage(`已移除文件: ${removedFile.name}`, "info");
+      }
+
+      // 初始化 UI 事件
+      function initUIEvents() {
+        // 标题字符计数更新
+        issueTitle.addEventListener("input", () => {
+          titleCharCount.textContent = issueTitle.value.length;
+          // 标题长度超限提示
+          if (issueTitle.value.length > 70) {
+            titleCharCount.classList.add("text-github-danger");
+          } else {
+            titleCharCount.classList.remove("text-github-danger");
+          }
         });
 
-        issueTitle.addEventListener('input', () => {
-            titleCharCount.textContent = issueTitle.value.length;
+        markdownOutput.addEventListener("input", () => {
+          markdownCharCount.textContent = markdownOutput.value.length;
         });
 
-        markdownOutput.addEventListener('input', () => {
-            markdownCharCount.textContent = markdownOutput.value.length;
+        // 文件导入按钮点击
+        importTxtBtn.addEventListener("click", () => {
+          fileInput.click();
         });
 
-        // 文件导入按钮点击事件
-        importTxtBtn.addEventListener('click', () => {
-            // 创建隐藏的文件输入框
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.txt,text/plain';
-            fileInput.multiple = true; // 允许多选
-            fileInput.className = 'file-input-hidden';
-
-            // 文件选择后的处理
-            fileInput.addEventListener('change', async (e) => {
-                const files = e.target.files;
-                if (files.length === 0) return;
-
-                await processTxtFiles(files);
-
-                // 移除临时文件输入框
-                fileInput.remove();
-            });
-
-            // 触发文件选择对话框
-            document.body.appendChild(fileInput);
-            fileInput.click();
+        // 文件选择处理
+        fileInput.addEventListener("change", async (e) => {
+          const files = e.target.files;
+          if (files.length === 0) return;
+          await processTxtFiles(files);
         });
 
-        // 清空表单
-        clearBtn.addEventListener('click', () => {
-            issueContent.value = '';
-            issueTitle.value = '';
-            markdownOutput.value = '';
-            charCount.textContent = '0';
-            titleCharCount.textContent = '0';
-            markdownCharCount.textContent = '0';
-            markdownOutput.readOnly = true;
-            markdownOutput.style.backgroundColor = '#f8f9fa';
-            hideStatusMessage();
-
+        // 拖拽功能
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          dropArea.addEventListener(eventName, preventDefaults, false);
         });
 
-        // 转换按钮点击事件
-        convertBtn.addEventListener('click', async () => {
-            await convertToMarkdown();
+        // 拖拽高亮
+        ["dragenter", "dragover"].forEach((eventName) => {
+          dropArea.addEventListener(
+            eventName,
+            () => {
+              dropArea.classList.add(
+                "border-github-primary",
+                "bg-github-bgUltraLight"
+              );
+            },
+            false
+          );
         });
 
-        // 提交按钮点击事件
-        issueForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await submitIssue();
+        ["dragleave", "drop"].forEach((eventName) => {
+          dropArea.addEventListener(
+            eventName,
+            () => {
+              dropArea.classList.remove(
+                "border-github-primary",
+                "bg-github-bgUltraLight"
+              );
+            },
+            false
+          );
         });
-    }
 
-    // 初始化字符计数
-    function initCharCounts() {
-        charCount.textContent = issueContent.value.length;
+        // 拖拽文件放下处理
+        dropArea.addEventListener(
+          "drop",
+          async (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length === 0) return;
+            await processTxtFiles(files);
+          },
+          false
+        );
+
+        // 清空按钮
+        clearBtn.addEventListener("click", () => {
+          issueTitle.value = "";
+          markdownOutput.value = "";
+          importedFiles = [];
+          importedContent = ""; // 清空导入内容
+          titleCharCount.textContent = "0";
+          markdownCharCount.textContent = "0";
+          markdownOutput.readOnly = true;
+          markdownEditHint.classList.add("hidden");
+          hideStatusMessage();
+          updateFileList(); // 清空文件列表
+          titleCharCount.classList.remove("text-github-danger");
+        });
+
+        // 转换 Markdown
+        convertBtn.addEventListener("click", async () => {
+          await convertToMarkdown();
+        });
+
+        // 提交 Issue
+        issueForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          await submitIssue();
+        });
+
+        // Prompt侧边栏事件
+        initPromptSidebarEvents();
+      }
+
+      // 初始化Prompt侧边栏事件
+      function initPromptSidebarEvents() {
+        // 打开侧边栏
+        editPromptBtn.addEventListener("click", () => {
+          promptSidebarOverlay.classList.remove("hidden");
+          promptSidebar.classList.remove("translate-x-full");
+          // 填充当前prompt内容
+          promptEditor.value = AI_CONFIG.PROMPT_CONTENT;
+          document.body.style.overflow = "hidden"; // 禁止背景滚动
+        });
+
+        // 关闭侧边栏
+        function closeSidebar() {
+          promptSidebarOverlay.classList.add("hidden");
+          promptSidebar.classList.add("translate-x-full");
+          document.body.style.overflow = ""; // 恢复滚动
+        }
+
+        closePromptSidebar.addEventListener("click", closeSidebar);
+        promptSidebarOverlay.addEventListener("click", closeSidebar);
+
+        // 保存Prompt修改
+        savePromptBtn.addEventListener("click", () => {
+          const newPrompt = promptEditor.value.trim();
+          if (!newPrompt) {
+            showStatusMessage("提示词内容不能为空", "error");
+            return;
+          }
+          AI_CONFIG.PROMPT_CONTENT = newPrompt;
+          showStatusMessage("✅ 提示词修改已保存（当前会话生效）", "success");
+          closeSidebar();
+        });
+
+        // 重置Prompt为原始内容
+        resetPromptBtn.addEventListener("click", () => {
+          if (AI_CONFIG.ORIGINAL_PROMPT) {
+            promptEditor.value = AI_CONFIG.ORIGINAL_PROMPT;
+            showStatusMessage("已重置为原始提示词内容", "info");
+          } else {
+            showStatusMessage("暂无原始提示词可重置", "warning");
+          }
+        });
+
+        // 复制Prompt内容
+        copyPromptBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(promptEditor.value);
+            showStatusMessage("✅ 提示词内容已复制到剪贴板", "success");
+          } catch (error) {
+            showStatusMessage("❌ 复制失败，请手动复制", "error");
+          }
+        });
+      }
+
+      // 阻止默认拖拽行为
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      // 初始化字符计数
+      function initCharCounts() {
         titleCharCount.textContent = issueTitle.value.length;
         markdownCharCount.textContent = markdownOutput.value.length;
-    }
+      }
 
-    // 显示状态消息
-    function showStatusMessage(message, type) {
+      // 显示状态消息
+      function showStatusMessage(message, type) {
         statusText.textContent = message;
-        statusMessage.className = `status-message ${type}`;
-        statusMessage.style.display = 'flex';
-    }
+        // 重置样式
+        statusMessage.className =
+          "mt-5 p-4 rounded-md flex items-center gap-3 animate-fade-in";
+        statusIcon.className = "fas text-lg status-icon flex-shrink-0";
 
-    // 隐藏状态消息
-    function hideStatusMessage() {
-        statusMessage.style.display = 'none';
-    }
+        switch (type) {
+          case "success":
+            statusMessage.classList.add(
+              "bg-gradient-to-r",
+              "from-github-secondary/10",
+              "to-github-secondary/5",
+              "text-github-secondary",
+              "border",
+              "border-github-secondary/20"
+            );
+            statusIcon.classList.add(
+              "fa-check-circle",
+              "text-github-secondary"
+            );
+            break;
+          case "error":
+            statusMessage.classList.add(
+              "bg-gradient-to-r",
+              "from-github-dangerLight",
+              "to-github-dangerLight/80",
+              "text-github-danger",
+              "border",
+              "border-github-danger/20"
+            );
+            statusIcon.classList.add(
+              "fa-exclamation-circle",
+              "text-github-danger"
+            );
+            break;
+          case "info":
+            statusMessage.classList.add(
+              "bg-gradient-to-r",
+              "from-github-infoLight",
+              "to-github-infoLight/80",
+              "text-github-info",
+              "border",
+              "border-github-info/20"
+            );
+            statusIcon.classList.add("fa-info-circle", "text-github-info");
+            break;
+          case "warning":
+            statusMessage.classList.add(
+              "bg-gradient-to-r",
+              "from-github-warningLight",
+              "to-github-warningLight/80",
+              "text-github-warning",
+              "border",
+              "border-github-warning/20"
+            );
+            statusIcon.classList.add(
+              "fa-exclamation-triangle",
+              "text-github-warning"
+            );
+            break;
+        }
+        statusMessage.style.display = "flex";
 
-    // 更新按钮状态
-    function updateButtonState(converting = false, submitting = false) {
+        // 5秒后自动隐藏非错误类提示
+        if (type !== "error") {
+          setTimeout(() => {
+            hideStatusMessage();
+          }, 5000);
+        }
+      }
+
+      // 隐藏状态消息
+      function hideStatusMessage() {
+        statusMessage.style.display = "none";
+      }
+
+      // 更新按钮状态
+      function updateButtonState(converting = false, submitting = false) {
         convertBtn.disabled = converting || submitting;
         submitBtn.disabled = submitting || converting;
+        importTxtBtn.disabled = converting || submitting;
 
         if (converting) {
-            convertBtn.innerHTML = '<div class="loading"></div> 转换中...';
+          convertBtn.innerHTML =
+            '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin-slow"></div> 转换中...';
         } else {
-            convertBtn.innerHTML = '<i class="fas fa-robot"></i> 转换为Markdown';
+          convertBtn.innerHTML = '<i class="fas fa-robot"></i> 转换为 Markdown';
         }
 
         if (submitting) {
-            submitBtn.innerHTML = '<div class="loading"></div> 提交中...';
+          submitBtn.innerHTML =
+            '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin-slow"></div> 提交中...';
         } else {
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交Issue';
+          submitBtn.innerHTML =
+            '<i class="fas fa-paper-plane"></i> 提交 Issue 到 GitHub';
         }
-    }
 
-    // 验证表单
-    function validateForm() {
+        if (converting || submitting) {
+          importTxtBtn.innerHTML =
+            '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin-slow"></div> 处理中...';
+        } else if (importTxtBtn.disabled) {
+          importTxtBtn.innerHTML =
+            '<i class="fas fa-file-import"></i> 选择 TXT 文件导入';
+        }
+      }
+
+      // 验证表单
+      function validateForm() {
         if (!issueTitle.value.trim()) {
-            showStatusMessage('请填写Issue标题', 'error');
-            issueTitle.focus();
-            return false;
+          showStatusMessage("请填写 Issue 标题", "error");
+          issueTitle.focus();
+          return false;
         }
 
-        if (!issueContent.value.trim()) {
-            showStatusMessage('请填写Issue内容', 'error');
-            issueContent.focus();
-            return false;
+        if (issueTitle.value.length > 100) {
+          showStatusMessage("Issue 标题过长（建议不超过 100 字符）", "error");
+          issueTitle.focus();
+          return false;
+        }
+
+        if (!importedContent.trim()) {
+          showStatusMessage("请先导入 TXT 文件", "error");
+          importTxtBtn.focus();
+          return false;
         }
 
         if (!markdownOutput.value.trim()) {
-            showStatusMessage('请先转换Markdown内容', 'error');
-            convertBtn.focus();
-            return false;
+          showStatusMessage("请先转换 Markdown 内容", "error");
+          convertBtn.focus();
+          return false;
         }
 
         return true;
-    }
+      }
 
-    // 加载提示词文件
-    async function loadPromptFile() {
+      // 加载提示词文件
+      async function loadPromptFile() {
         try {
-            const response = await fetch(AI_CONFIG.PROMPT_FILE);
-            if (!response.ok) {
-                console.warn(`提示词文件加载失败: ${response.status}，使用内置提示词`);
-                AI_CONFIG.PROMPT_CONTENT = `请将以下用户输入的内容，优化并格式化为一个结构清晰、适合作为GitHub Issue描述的Markdown文本。要求：
+          const response = await fetch(AI_CONFIG.PROMPT_FILE);
+          if (!response.ok) {
+            console.warn(
+              `提示词文件加载失败: ${response.status}，使用内置提示词`
+            );
+            AI_CONFIG.PROMPT_CONTENT = `请将以下用户输入的内容，结合标题「{TITLE}」优化并格式化为一个结构清晰、适合作为 GitHub Issue 描述的 Markdown 文本。要求：
 1. 保持原意不变，优化语言表达
-2. 使用合适的Markdown格式（如标题、列表、代码块等）
-3. 如果内容涉及问题描述，请结构化组织
+2. 使用合适的 Markdown 格式（如标题、列表、代码块等）
+3. 如果内容涉及问题描述，请结构化组织（如：问题描述、复现步骤、预期结果、实际结果）
 4. 输出语言与输入语言保持一致
+5. 移除无关的文件标识信息，只保留核心内容
 
 用户输入内容：`;
-                return true;
-            }
-
-            const promptText = await response.text();
-            if (!promptText.trim()) {
-                throw new Error('提示词文件为空');
-            }
-
-            AI_CONFIG.PROMPT_CONTENT = promptText;
-            console.log('提示词文件加载成功，长度:', promptText.length);
+            AI_CONFIG.ORIGINAL_PROMPT = AI_CONFIG.PROMPT_CONTENT; // 保存原始内容
             return true;
+          }
 
+          const promptText = await response.text();
+          if (!promptText.trim()) {
+            throw new Error("提示词文件为空");
+          }
+
+          AI_CONFIG.PROMPT_CONTENT = promptText;
+          AI_CONFIG.ORIGINAL_PROMPT = promptText; // 保存原始内容
+          console.log("提示词文件加载成功，长度:", promptText.length);
+          return true;
         } catch (error) {
-            console.error('加载提示词文件失败:', error);
-            AI_CONFIG.PROMPT_CONTENT = `请将以下文本转换为格式良好的GitHub Issue Markdown描述：
+          console.error("加载提示词文件失败:", error);
+          AI_CONFIG.PROMPT_CONTENT = `请将以下文本结合标题「{TITLE}」转换为格式良好的 GitHub Issue Markdown 描述：
 
 用户输入：`;
-            return true;
+          AI_CONFIG.ORIGINAL_PROMPT = AI_CONFIG.PROMPT_CONTENT; // 保存原始内容
+          return true;
         }
-    }
+      }
 
-    // 构建完整提示词
-    function buildFullPrompt(originalText) {
-        let fullPrompt = AI_CONFIG.PROMPT_CONTENT;
-
-        if (!fullPrompt.endsWith('\n')) {
-            fullPrompt += '\n';
+      // 构建完整提示词
+      function buildFullPrompt() {
+        const title = issueTitle.value.trim();
+        const content = importedContent; // 从导入内容获取
+        let fullPrompt = AI_CONFIG.PROMPT_CONTENT.replace("{TITLE}", title);
+        if (!fullPrompt.endsWith("\n")) {
+          fullPrompt += "\n";
         }
-
-        if (!fullPrompt.includes('用户输入：') && !fullPrompt.includes('User Input:')) {
-            fullPrompt += '\n---\n用户输入：\n';
+        if (
+          !fullPrompt.includes("用户输入：") &&
+          !fullPrompt.includes("User Input:")
+        ) {
+          fullPrompt += "\n---\n用户输入：\n";
         }
-
-        fullPrompt += originalText;
-
+        fullPrompt += content;
         return fullPrompt;
-    }
+      }
 
-    // 检测API提供商类型
-    function detectAPIProvider(baseUrl) {
+      // 检测 API 提供商类型
+      function detectAPIProvider(baseUrl) {
         const url = baseUrl.toLowerCase();
-
         const providerPatterns = [
-            { pattern: 'openai|api.openai.com', provider: 'openai' },
-            { pattern: 'anthropic|api.anthropic.com', provider: 'anthropic' },
-            { pattern: 'deepseek|api.deepseek.com', provider: 'deepseek' },
-            { pattern: 'ollama|localhost|127.0.0.1', provider: 'ollama' },
-            { pattern: 'groq|api.groq.com', provider: 'groq' },
-            { pattern: 'zhipu|open.bigmodel.cn', provider: 'zhipu' },
-            { pattern: 'qwen|dashscope.aliyuncs.com', provider: 'qwen' },
-            { pattern: 'azure|openai.azure.com', provider: 'azure' }
+          { pattern: "openai|api.openai.com", provider: "openai" },
+          { pattern: "anthropic|api.anthropic.com", provider: "anthropic" },
+          { pattern: "deepseek|api.deepseek.com", provider: "deepseek" },
+          { pattern: "ollama|localhost|127.0.0.1", provider: "ollama" },
+          { pattern: "groq|api.groq.com", provider: "groq" },
+          { pattern: "zhipu|open.bigmodel.cn", provider: "zhipu" },
+          { pattern: "qwen|dashscope.aliyuncs.com", provider: "qwen" },
+          { pattern: "azure|openai.azure.com", provider: "azure" },
         ];
 
         for (const { pattern, provider } of providerPatterns) {
-            if (new RegExp(pattern).test(url)) {
-                return provider;
-            }
+          if (new RegExp(pattern).test(url)) {
+            return provider;
+          }
         }
+        return "openai-compatible";
+      }
 
-        return 'openai-compatible';
-    }
-
-    // 构建对应API提供商的请求参数
-    function buildAIRequest(provider, fullPrompt) {
+      // 构建 AI 请求参数
+      function buildAIRequest(provider, fullPrompt) {
         const commonParams = {
-            model: AI_CONFIG.MODEL,
-            max_tokens: 4000,
-            temperature: 0.3
+          model: AI_CONFIG.MODEL,
+          max_tokens: 4000,
+          temperature: 0.3,
         };
 
-        switch(provider) {
-            case 'openai':
-            case 'deepseek':
-            case 'groq':
-            case 'azure':
-            case 'openai-compatible':
-                return {
-                    url: `${AI_CONFIG.BASE_URL}/chat/completions`,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        ...commonParams,
-                        messages: [
-                            {
-                                role: 'system',
-                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
-                            },
-                            { role: 'user', content: fullPrompt }
-                        ],
-                        stream: false
-                    })
-                };
+        switch (provider) {
+          case "openai":
+          case "deepseek":
+          case "groq":
+          case "azure":
+          case "openai-compatible":
+          case "zhipu":
+            return {
+              url: `${AI_CONFIG.BASE_URL}/chat/completions`,
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${AI_CONFIG.API_KEY}`,
+              },
+              body: JSON.stringify({
+                ...commonParams,
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      "你是一名专业的 Markdown 格式化助手，专注于将文本转换为结构良好的 GitHub Issue 描述。",
+                  },
+                  { role: "user", content: fullPrompt },
+                ],
+                stream: false,
+              }),
+            };
 
-            case 'anthropic':
-                return {
-                    url: `${AI_CONFIG.BASE_URL}/v1/messages`,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': AI_CONFIG.API_KEY,
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify({
-                        model: AI_CONFIG.MODEL,
-                        max_tokens: 4000,
-                        messages: [
-                            { role: 'user', content: fullPrompt }
-                        ],
-                        system: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
-                    })
-                };
+          case "anthropic":
+            return {
+              url: `${AI_CONFIG.BASE_URL}/v1/messages`,
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": AI_CONFIG.API_KEY,
+                "anthropic-version": "2023-06-01",
+              },
+              body: JSON.stringify({
+                model: AI_CONFIG.MODEL,
+                max_tokens: 4000,
+                messages: [{ role: "user", content: fullPrompt }],
+                system:
+                  "你是一名专业的 Markdown 格式化助手，专注于将文本转换为结构良好的 GitHub Issue 描述。",
+              }),
+            };
 
-            case 'ollama':
-                return {
-                    url: `${AI_CONFIG.BASE_URL}/api/chat`,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: AI_CONFIG.MODEL,
-                        messages: [
-                            {
-                                role: 'system',
-                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
-                            },
-                            { role: 'user', content: fullPrompt }
-                        ],
-                        stream: false,
-                        options: {
-                            temperature: 0.3,
-                            num_predict: 4000
-                        }
-                    })
-                };
+          case "ollama":
+            return {
+              url: `${AI_CONFIG.BASE_URL}/api/chat`,
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: AI_CONFIG.MODEL,
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      "你是一名专业的 Markdown 格式化助手，专注于将文本转换为结构良好的 GitHub Issue 描述。",
+                  },
+                  { role: "user", content: fullPrompt },
+                ],
+                stream: false,
+                options: {
+                  temperature: 0.3,
+                  num_predict: 4000,
+                },
+              }),
+            };
 
-            case 'zhipu':
-                return {
-                    url: `${AI_CONFIG.BASE_URL}/chat/completions`,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
+          case "qwen":
+            return {
+              url: `${AI_CONFIG.BASE_URL}/api/v1/services/aigc/text-generation/generation`,
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${AI_CONFIG.API_KEY}`,
+              },
+              body: JSON.stringify({
+                model: AI_CONFIG.MODEL,
+                input: {
+                  messages: [
+                    {
+                      role: "system",
+                      content:
+                        "你是一名专业的 Markdown 格式化助手，专注于将文本转换为结构良好的 GitHub Issue 描述。",
                     },
-                    body: JSON.stringify({
-                        model: AI_CONFIG.MODEL,
-                        messages: [
-                            {
-                                role: 'system',
-                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
-                            },
-                            { role: 'user', content: fullPrompt }
-                        ],
-                        temperature: 0.3,
-                        max_tokens: 4000
-                    })
-                };
+                    { role: "user", content: fullPrompt },
+                  ],
+                },
+                parameters: {
+                  temperature: 0.3,
+                  max_tokens: 4000,
+                },
+              }),
+            };
 
-            case 'qwen':
-                return {
-                    url: `${AI_CONFIG.BASE_URL}/api/v1/services/aigc/text-generation/generation`,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: AI_CONFIG.MODEL,
-                        input: {
-                            messages: [
-                                {
-                                    role: 'system',
-                                    content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
-                                },
-                                { role: 'user', content: fullPrompt }
-                            ]
-                        },
-                        parameters: {
-                            temperature: 0.3,
-                            max_tokens: 4000
-                        }
-                    })
-                };
-
-            default:
-                return {
-                    url: `${AI_CONFIG.BASE_URL}/chat/completions`,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        ...commonParams,
-                        messages: [
-                            {
-                                role: 'system',
-                                content: '你是一名专业的Markdown格式化助手，专注于将文本转换为结构良好的GitHub Issue描述。'
-                            },
-                            { role: 'user', content: fullPrompt }
-                        ],
-                        stream: false
-                    })
-                };
+          default:
+            return {
+              url: `${AI_CONFIG.BASE_URL}/chat/completions`,
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${AI_CONFIG.API_KEY}`,
+              },
+              body: JSON.stringify({
+                ...commonParams,
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      "你是一名专业的 Markdown 格式化助手，专注于将文本转换为结构良好的 GitHub Issue 描述。",
+                  },
+                  { role: "user", content: fullPrompt },
+                ],
+                stream: false,
+              }),
+            };
         }
-    }
+      }
 
-    // 解析不同API的响应
-    function parseAIResponse(provider, data) {
+      // 解析 AI 响应
+      function parseAIResponse(provider, data) {
         try {
-            let content = '';
+          let content = "";
+          switch (provider) {
+            case "openai":
+            case "deepseek":
+            case "groq":
+            case "azure":
+            case "openai-compatible":
+            case "zhipu":
+              content = data.choices[0]?.message?.content || "";
+              break;
+            case "anthropic":
+              content = data.content[0]?.text || "";
+              break;
+            case "ollama":
+              content = data.message?.content || "";
+              break;
+            case "qwen":
+              content =
+                data.output?.text ||
+                data.output?.choices?.[0]?.message?.content ||
+                "";
+              break;
+            default:
+              if (data.choices && data.choices[0]?.message?.content) {
+                content = data.choices[0].message.content;
+              } else if (data.content) {
+                content = data.content;
+              } else if (data.message) {
+                content = data.message.content || data.message;
+              } else if (data.output) {
+                content = data.output.text || JSON.stringify(data.output);
+              }
+          }
 
-            switch(provider) {
-                case 'openai':
-                case 'deepseek':
-                case 'groq':
-                case 'azure':
-                case 'openai-compatible':
-                case 'zhipu':
-                    content = data.choices[0]?.message?.content || '';
-                    break;
-
-                case 'anthropic':
-                    content = data.content[0]?.text || '';
-                    break;
-
-                case 'ollama':
-                    content = data.message?.content || '';
-                    break;
-
-                case 'qwen':
-                    content = data.output?.text || data.output?.choices?.[0]?.message?.content || '';
-                    break;
-
-                default:
-                    if (data.choices && data.choices[0]?.message?.content) {
-                        content = data.choices[0].message.content;
-                    } else if (data.content) {
-                        content = data.content;
-                    } else if (data.message) {
-                        content = data.message.content || data.message;
-                    } else if (data.output) {
-                        content = data.output.text || JSON.stringify(data.output);
-                    }
+          content = content.trim();
+          const unwantedPrefixes = [
+            "好的，",
+            "以下是",
+            "根据您的要求",
+            "根据用户输入",
+            "转换后的Markdown如下：",
+            "Markdown格式：",
+            "我将为您转换：",
+          ];
+          for (const prefix of unwantedPrefixes) {
+            if (content.startsWith(prefix)) {
+              content = content.substring(prefix.length).trim();
             }
-
-            content = content.trim();
-
-            const unwantedPrefixes = [
-                '好的，',
-                '以下是',
-                '根据您的要求',
-                '根据用户输入',
-                '转换后的Markdown如下：',
-                'Markdown格式：'
-            ];
-
-            for (const prefix of unwantedPrefixes) {
-                if (content.startsWith(prefix)) {
-                    content = content.substring(prefix.length).trim();
-                }
-            }
-
-            return content;
-
+          }
+          return content;
         } catch (error) {
-            console.error('解析AI响应失败:', error, data);
-            return '';
+          console.error("解析 AI 响应失败:", error, data);
+          return "";
         }
-    }
+      }
 
-    // 转换为Markdown
-    async function convertToMarkdown() {
+      // 转换为 Markdown
+      async function convertToMarkdown() {
         const title = issueTitle.value.trim();
-        const body = issueContent.value.trim();
 
         if (!AI_CONFIG.IS_CONFIGURED) {
-            showStatusMessage('❌ AI配置未加载完成', 'error');
-            return;
+          showStatusMessage("❌ AI 配置未加载完成", "error");
+          return;
         }
 
         if (!title) {
-            showStatusMessage('请先填写Issue标题', 'error');
-            issueTitle.focus();
-            return;
+          showStatusMessage("请先填写 Issue 标题", "error");
+          issueTitle.focus();
+          return;
         }
 
-        if (!body) {
-            showStatusMessage('请先填写Issue内容', 'error');
-            issueContent.focus();
-            return;
+        if (!importedContent.trim()) {
+          showStatusMessage("请先导入 TXT 文件", "error");
+          importTxtBtn.focus();
+          return;
         }
 
         updateButtonState(true, false);
-        showStatusMessage(`🤖 正在使用 ${AI_CONFIG.MODEL} 转换Markdown...`, 'info');
+        showStatusMessage(
+          `🤖 正在使用 ${AI_CONFIG.MODEL} 转换 Markdown...`,
+          "info"
+        );
 
         try {
-            const fullPrompt = buildFullPrompt(body);
-            const provider = detectAPIProvider(AI_CONFIG.BASE_URL);
-            const requestConfig = buildAIRequest(provider, fullPrompt);
+          const fullPrompt = buildFullPrompt();
+          const provider = detectAPIProvider(AI_CONFIG.BASE_URL);
+          const requestConfig = buildAIRequest(provider, fullPrompt);
 
-            const response = await fetch(requestConfig.url, {
-                method: 'POST',
-                headers: requestConfig.headers,
-                body: requestConfig.body
-            });
+          const response = await fetch(requestConfig.url, {
+            method: "POST",
+            headers: requestConfig.headers,
+            body: requestConfig.body,
+          });
 
-            if (!response.ok) {
-                let errorMessage = `AI API错误 (${response.status})`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage += `: ${errorData.error?.message || JSON.stringify(errorData)}`;
-                } catch (e) {
-                    errorMessage += `: ${response.statusText}`;
-                }
-                throw new Error(errorMessage);
+          if (!response.ok) {
+            let errorMessage = `AI API 错误 (${response.status})`;
+            try {
+              const errorData = await response.json();
+              errorMessage += `: ${
+                errorData.error?.message || JSON.stringify(errorData)
+              }`;
+            } catch (e) {
+              errorMessage += `: ${response.statusText}`;
             }
+            throw new Error(errorMessage);
+          }
 
-            const data = await response.json();
-            const formattedText = parseAIResponse(provider, data);
+          const data = await response.json();
+          const formattedText = parseAIResponse(provider, data);
 
-            if (!formattedText.trim()) {
-                throw new Error('AI返回内容为空');
-            }
+          if (!formattedText.trim()) {
+            throw new Error("AI 返回内容为空");
+          }
 
-            // 将结果填入输出框，并允许编辑
-            markdownOutput.value = formattedText;
-            markdownOutput.readOnly = false;
-            markdownOutput.style.backgroundColor = '#ffffff';
-            markdownCharCount.textContent = formattedText.length;
-
-            showStatusMessage(`✅ ${AI_CONFIG.MODEL} 转换完成！可以编辑Markdown内容`, 'success');
-
+          // 填入并允许编辑
+          markdownOutput.value = formattedText;
+          markdownOutput.readOnly = false;
+          markdownEditHint.classList.remove("hidden");
+          markdownCharCount.textContent = formattedText.length;
+          showStatusMessage(
+            `✅ ${AI_CONFIG.MODEL} 转换完成！可以编辑 Markdown 内容`,
+            "success"
+          );
         } catch (error) {
-            console.error('AI转换失败:', error);
-            showStatusMessage(`⚠️ AI转换失败: ${error.message}`, 'error');
+          console.error("AI 转换失败:", error);
+          showStatusMessage(`⚠️ AI 转换失败: ${error.message}`, "error");
         } finally {
-            updateButtonState(false, false);
+          updateButtonState(false, false);
         }
-    }
+      }
 
-    // 提交Issue到GitHub
-    async function submitIssue() {
+      // 提交 Issue 到 GitHub
+      async function submitIssue() {
         if (!GITHUB_CONFIG.IS_CONFIGURED) {
-            showStatusMessage('❌ GitHub配置未加载完成', 'error');
-            return;
+          showStatusMessage("❌ GitHub 配置未加载完成", "error");
+          return;
         }
 
         if (!validateForm()) {
-            return;
+          return;
         }
 
         const title = issueTitle.value.trim();
         const body = markdownOutput.value.trim();
 
         updateButtonState(false, true);
-        showStatusMessage('🚀 正在提交Issue到GitHub...', 'info');
+        showStatusMessage("🚀 正在提交 Issue 到 GitHub...", "info");
 
         try {
-            const apiUrl = `${GITHUB_CONFIG.API_URL}/repos/${GITHUB_CONFIG.REPO_OWNER}/${GITHUB_CONFIG.REPO_NAME}/issues`;
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    title: title,
-                    body: body
-                })
-            });
+          const apiUrl = `${GITHUB_CONFIG.API_URL}/repos/${GITHUB_CONFIG.REPO_OWNER}/${GITHUB_CONFIG.REPO_NAME}/issues`;
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `token ${GITHUB_CONFIG.TOKEN}`,
+              "Content-Type": "application/json",
+              Accept: "application/vnd.github.v3+json",
+            },
+            body: JSON.stringify({
+              title: title,
+              body: body,
+            }),
+          });
 
-            const responseData = await response.json();
+          const responseData = await response.json();
 
-            if (response.ok) {
-                showStatusMessage(`✅ Issue #${responseData.number} 创建成功！`, 'success');
+          if (response.ok) {
+            showStatusMessage(
+              `✅ Issue #${responseData.number} 创建成功！即将打开 Issue 页面`,
+              "success"
+            );
+            // 清空所有内容
+            issueTitle.value = "";
+            markdownOutput.value = "";
+            markdownOutput.readOnly = true;
+            markdownEditHint.classList.add("hidden");
+            importedFiles = [];
+            importedContent = "";
+            titleCharCount.textContent = "0";
+            markdownCharCount.textContent = "0";
+            updateFileList();
 
-                // 清空表单，但保留标题和内容方便继续编辑
-                markdownOutput.value = '';
-                markdownOutput.readOnly = true;
-                markdownOutput.style.backgroundColor = '#f8f9fa';
-                markdownCharCount.textContent = '0';
-
-                setTimeout(() => {
-                    if (responseData.html_url) {
-                        window.open(responseData.html_url, '_blank');
-                    }
-                }, 1500);
-
-            } else {
-                let errorMessage = `GitHub提交失败 (${response.status})`;
-                if (response.status === 401) errorMessage = 'GitHub认证失败';
-                else if (response.status === 403) errorMessage = 'GitHub权限不足';
-                else if (response.status === 404) errorMessage = '仓库不存在';
-                else if (responseData.message) errorMessage += `: ${responseData.message}`;
-                throw new Error(errorMessage);
-            }
-
+            setTimeout(() => {
+              if (responseData.html_url) {
+                window.open(responseData.html_url, "_blank");
+              }
+            }, 1500);
+          } else {
+            let errorMessage = `GitHub 提交失败 (${response.status})`;
+            if (response.status === 401)
+              errorMessage = "GitHub 认证失败（令牌无效或无权限）";
+            else if (response.status === 403)
+              errorMessage = "GitHub 权限不足（需要 repo 权限）";
+            else if (response.status === 404)
+              errorMessage = "仓库不存在或路径错误";
+            else if (responseData.message)
+              errorMessage += `: ${responseData.message}`;
+            throw new Error(errorMessage);
+          }
         } catch (error) {
-            console.error('提交失败:', error);
-            showStatusMessage(`提交失败: ${error.message}`, 'error');
+          console.error("提交失败:", error);
+          showStatusMessage(`❌ 提交失败: ${error.message}`, "error");
         } finally {
-            updateButtonState(false, false);
+          updateButtonState(false, false);
         }
-    }
+      }
 
-    // 加载所有配置文件
-    async function loadAllConfig() {
+      // 加载所有配置文件
+      async function loadAllConfig() {
         try {
-            const response = await fetch('config.conf');
-            if (!response.ok) {
-                throw new Error(`主配置文件加载失败: ${response.status}`);
-            }
+          const response = await fetch("config.conf");
+          if (!response.ok) {
+            throw new Error(
+              `主配置文件加载失败: ${response.status}（请确保 config.conf 文件存在且可访问）`
+            );
+          }
 
-            const configText = await response.text();
-            const configLines = configText.split('\n');
+          const configText = await response.text();
+          const configLines = configText.split("\n");
 
-            configLines.forEach(line => {
-                if (line.trim() && !line.startsWith('#')) {
-                    const [key, value] = line.split('=').map(s => s.trim());
-                    if (key && value) {
-                        if (['BASE_URL', 'API_KEY', 'MODEL'].includes(key)) {
-                            AI_CONFIG[key] = value;
-                        }
-                        else if (key === 'GITHUB_TOKEN') {
-                            GITHUB_CONFIG.TOKEN = value;
-                        } else if (key === 'REPO_OWNER') {
-                            GITHUB_CONFIG.REPO_OWNER = value;
-                        } else if (key === 'REPO_NAME') {
-                            GITHUB_CONFIG.REPO_NAME = value;
-                        } else if (key === 'GITHUB_API_URL') {
-                            GITHUB_CONFIG.API_URL = value;
-                        } else if (key === 'API_URL') {
-                            GITHUB_CONFIG.API_URL = value;
-                        }
-                        else if (key === 'PROMPT_FILE') {
-                            AI_CONFIG.PROMPT_FILE = value;
-                        }
-                    }
+          configLines.forEach((line) => {
+            if (line.trim() && !line.startsWith("#")) {
+              const [key, value] = line.split("=").map((s) => s.trim());
+              if (key && value) {
+                if (["BASE_URL", "API_KEY", "MODEL"].includes(key)) {
+                  AI_CONFIG[key] = value;
+                } else if (key === "GITHUB_TOKEN") {
+                  GITHUB_CONFIG.TOKEN = value;
+                } else if (key === "REPO_OWNER") {
+                  GITHUB_CONFIG.REPO_OWNER = value;
+                } else if (key === "REPO_NAME") {
+                  GITHUB_CONFIG.REPO_NAME = value;
+                } else if (key === "GITHUB_API_URL" || key === "API_URL") {
+                  GITHUB_CONFIG.API_URL = value;
+                } else if (key === "PROMPT_FILE") {
+                  AI_CONFIG.PROMPT_FILE = value;
                 }
-            });
-
-            const missingAIConfigs = [];
-            if (!AI_CONFIG.BASE_URL) missingAIConfigs.push('BASE_URL');
-            if (!AI_CONFIG.API_KEY) missingAIConfigs.push('API_KEY');
-            if (!AI_CONFIG.MODEL) missingAIConfigs.push('MODEL');
-
-            if (missingAIConfigs.length > 0) {
-                throw new Error(`AI配置缺少: ${missingAIConfigs.join(', ')}`);
+              }
             }
+          });
 
-            const promptLoaded = await loadPromptFile();
-            if (!promptLoaded) {
-                console.warn('提示词文件加载失败，继续使用默认提示词');
-            }
+          const missingAIConfigs = [];
+          if (!AI_CONFIG.BASE_URL) missingAIConfigs.push("BASE_URL");
+          if (!AI_CONFIG.API_KEY) missingAIConfigs.push("API_KEY");
+          if (!AI_CONFIG.MODEL) missingAIConfigs.push("MODEL");
 
-            AI_CONFIG.IS_CONFIGURED = true;
+          if (missingAIConfigs.length > 0) {
+            throw new Error(
+              `AI 配置缺少: ${missingAIConfigs.join(
+                ", "
+              )}（请检查 config.conf 文件）`
+            );
+          }
 
-            if (!GITHUB_CONFIG.TOKEN) {
-                const userToken = prompt(
-                    '请手动输入GitHub Personal Access Token:\n' +
-                    '（需要repo权限，仅本地使用）',
-                    ''
-                );
+          const promptLoaded = await loadPromptFile();
+          if (!promptLoaded) {
+            console.warn("提示词文件加载失败，继续使用默认提示词");
+          }
 
-                if (userToken && userToken.trim()) {
-                    GITHUB_CONFIG.TOKEN = userToken.trim();
-                    GITHUB_CONFIG.IS_CONFIGURED = true;
-                } else {
-                    throw new Error('GitHub令牌未设置');
-                }
+          AI_CONFIG.IS_CONFIGURED = true;
+
+          if (!GITHUB_CONFIG.TOKEN) {
+            const userToken = prompt(
+              "请手动输入 GitHub Personal Access Token:\n" +
+                "（需要 repo 权限，仅本地使用，不会上传）",
+              ""
+            );
+
+            if (userToken && userToken.trim()) {
+              GITHUB_CONFIG.TOKEN = userToken.trim();
+              GITHUB_CONFIG.IS_CONFIGURED = true;
             } else {
-                GITHUB_CONFIG.IS_CONFIGURED = true;
+              throw new Error("GitHub 令牌未设置（提交功能将无法使用）");
             }
+          } else {
+            GITHUB_CONFIG.IS_CONFIGURED = true;
+          }
 
-            showStatusMessage(`✅ 配置加载成功！使用模型: ${AI_CONFIG.MODEL}`, 'info');
-            console.log('配置加载成功');
-
+          showStatusMessage(
+            `✅ 配置加载成功！使用模型: ${AI_CONFIG.MODEL}`,
+            "success"
+          );
+          console.log("配置加载成功");
         } catch (error) {
-            console.error('配置加载错误:', error);
-            showStatusMessage(`⚠️ 配置加载失败: ${error.message}`, 'error');
-            convertBtn.disabled = true;
-            submitBtn.disabled = true;
+          console.error("配置加载错误:", error);
+          showStatusMessage(`⚠️ 配置加载失败: ${error.message}`, "warning");
+          convertBtn.disabled = true;
+          submitBtn.disabled = true;
         }
-    }
+      }
 
-    // 处理多个TXT文件
-    async function processTxtFiles(files) {
+      // 处理 TXT 文件
+      async function processTxtFiles(files) {
         if (!files || files.length === 0) return;
 
         // 更新按钮状态
         importTxtBtn.disabled = true;
-        importTxtBtn.classList.add('importing');
-        importTxtBtn.innerHTML = '<div class="loading"></div> 导入中...';
+        importTxtBtn.innerHTML =
+          '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin-slow"></div> 导入中...';
 
-        let allContent = '';
         let fileCount = files.length;
         let processedCount = 0;
+        let newFiles = [];
+        let combinedContent = "";
 
-        showStatusMessage(`正在导入 ${fileCount} 个文件...`, 'info');
+        showStatusMessage(`正在导入 ${fileCount} 个文件...`, "info");
 
-        // 依次读取每个文件
+        // 依次读取文件
         for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+          const file = files[i];
+          if (
+            !file.name.toLowerCase().endsWith(".txt") &&
+            !file.type.includes("text/plain")
+          ) {
+            showStatusMessage(`跳过非文本文件: ${file.name}`, "warning");
+            processedCount++;
+            continue;
+          }
 
-            // 检查文件类型
-            if (!file.name.toLowerCase().endsWith('.txt') &&
-                !file.type.includes('text/plain')) {
-                showStatusMessage(`跳过非文本文件: ${file.name}`, 'error');
-                processedCount++;
-                continue;
-            }
+          // 检查是否已导入相同文件
+          const isDuplicate = importedFiles.some(
+            (f) => f.name === file.name && f.size === file.size
+          );
+          if (isDuplicate) {
+            showStatusMessage(`跳过重复文件: ${file.name}`, "warning");
+            processedCount++;
+            continue;
+          }
 
-            try {
-                const content = await readFileAsText(file);
-                allContent += `\n\n=== 文件 ${i + 1}: ${file.name} ===\n\n`;
-                allContent += content;
-                processedCount++;
-
-                // 更新进度
-                showStatusMessage(`已导入 ${processedCount}/${fileCount} 个文件: ${file.name}`, 'info');
-            } catch (error) {
-                console.error(`读取文件失败 ${file.name}:`, error);
-                showStatusMessage(`读取文件失败: ${file.name}`, 'error');
-            }
+          try {
+            const content = await readFileAsText(file);
+            newFiles.push({
+              name: file.name,
+              size: file.size,
+              content: content,
+            });
+            // 合并文件内容（添加文件标识）
+            combinedContent += `\n\n=== 文件 ${file.name} ===\n\n${content}`;
+            processedCount++;
+            showStatusMessage(
+              `已导入 ${processedCount}/${fileCount} 个文件: ${file.name}`,
+              "info"
+            );
+          } catch (error) {
+            console.error(`读取文件失败 ${file.name}:`, error);
+            showStatusMessage(
+              `读取文件失败: ${file.name}（${error.message}）`,
+              "error"
+            );
+          }
         }
 
-        // 合并内容到文本框
-        if (allContent.trim()) {
-            // 如果当前文本框有内容，添加分隔符
-            const currentContent = issueContent.value.trim();
-            if (currentContent) {
-                issueContent.value = currentContent + '\n\n' + '--- 导入的文件内容 ---' + allContent;
-            } else {
-                issueContent.value = allContent.trim();
-            }
+        // 添加新文件到列表
+        importedFiles = [...importedFiles, ...newFiles];
+        // 更新导入内容
+        importedContent = combinedContent.trim();
 
-            // 更新字符计数
-            charCount.textContent = issueContent.value.length;
+        // 更新文件列表展示
+        updateFileList();
 
-            showStatusMessage(`✅ 成功导入 ${processedCount} 个文件，共 ${allContent.length} 字符`, 'success');
+        // 提示结果
+        if (newFiles.length > 0) {
+          showStatusMessage(
+            `✅ 成功导入 ${newFiles.length} 个新文件`,
+            "success"
+          );
         } else {
-            showStatusMessage('没有成功导入任何内容', 'error');
+          showStatusMessage("没有导入新的有效文件", "warning");
         }
 
         // 恢复按钮状态
         importTxtBtn.disabled = false;
-        importTxtBtn.classList.remove('importing');
-        importTxtBtn.innerHTML = '<i class="fas fa-file-import"></i> 导入TXT文件';
-    }
+        importTxtBtn.innerHTML =
+          '<i class="fas fa-file-import"></i> 选择 TXT 文件导入';
+      }
 
-    // 读取文件内容
-    function readFileAsText(file) {
+      // 读取文件内容
+      function readFileAsText(file) {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                resolve(e.target.result);
-            };
-
-            reader.onerror = (e) => {
-                reject(new Error(`读取文件失败: ${file.name}`));
-            };
-
-            reader.readAsText(file, 'UTF-8');
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = () =>
+            reject(new Error(`读取失败（文件编码可能不是 UTF-8）`));
+          reader.readAsText(file, "UTF-8");
         });
-    }
+      }
 
-    // 页面加载
-    window.addEventListener('DOMContentLoaded', async () => {
-        showStatusMessage('正在加载配置和提示词...', 'info');
+      // 页面加载初始化
+      window.addEventListener("DOMContentLoaded", async () => {
+        showStatusMessage("正在加载配置和提示词...", "info");
         await loadAllConfig();
         initUIEvents();
         initCharCounts();
-    });
-</script>
-
-
-</body>
+        updateFileList(); // 初始化文件列表
+      });
+    </script>
+  </body>
 </html>

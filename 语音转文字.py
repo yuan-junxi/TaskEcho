@@ -6,12 +6,12 @@ import time
 # 语音转文字 ————> 把音频文件放到监控的文件夹 ————> 自动转为文本文件，删除原音频文件
 
 # ===== 配置 =====
-WATCH_FOLDER = r"C:\Users\43162\Desktop\video"  # 监控的文件夹
+WATCH_FOLDER = r"C:\Users\Lin\OneDrive\文档\WeChat Files\wxid_lyhtk82g6yxk22\FileStorage\Video\2025-06"  # 监控的文件夹
 MODEL_SIZE = "medium"  # Whisper模型大小：可选"tiny", "base", "small", "medium", "large", "large-v2", "large-v3"
 CHECK_INTERVAL = 1  # 检查间隔(秒)
 
 # 需要指定ffmpeg的文件路径
-os.environ["PATH"] += os.pathsep + r"C:\Users\43162\Desktop\ffmpeg-8.0.1-essentials_build\bin"
+os.environ["PATH"] += os.pathsep + r"D:\Study\ffmpeg-8.0.1-essentials_build\bin"
 
 def to_simple(text):
     """繁体转简体"""
